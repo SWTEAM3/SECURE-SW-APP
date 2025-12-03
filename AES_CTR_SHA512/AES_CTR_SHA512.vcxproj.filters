@@ -1,0 +1,174 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="소스 파일">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="헤더 파일">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="리소스 파일">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="소스 파일\app">
+      <UniqueIdentifier>{b5f358e4-8fb0-4b8b-a235-dcd483318fef}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\tests">
+      <UniqueIdentifier>{e137853d-df6c-43fa-bed7-3adfb6beba7c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\src">
+      <UniqueIdentifier>{a5c594a5-2ffa-489e-ab31-42aac146418d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\src\crypto">
+      <UniqueIdentifier>{3ef4fd7e-5e0f-4521-90e9-b8bf01e5c623}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\src\crypto\cipher">
+      <UniqueIdentifier>{3cfeb62c-7758-40b4-92b0-a21b8f53b40f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\src\crypto\mode">
+      <UniqueIdentifier>{da9ec4d5-ecc5-472d-b084-954ab364ab47}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\src\crypto\hash">
+      <UniqueIdentifier>{35d47739-d48f-4459-9af2-5313feebd3b4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\src\crypto\key">
+      <UniqueIdentifier>{21ea5406-62ed-41a2-b0d3-f99d9a88030a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\src\crypto\stream">
+      <UniqueIdentifier>{a7633f67-034d-4541-bc5c-840f463b7640}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\include">
+      <UniqueIdentifier>{65c4909a-7f3d-4aca-9d58-3e0eb5830453}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\bench">
+      <UniqueIdentifier>{81bd6b99-5c66-4383-bb85-e516ede3eacf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\include\crypto">
+      <UniqueIdentifier>{fdd3119a-d630-4f1b-a9f5-4846e628673b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\include\crypto\mode">
+      <UniqueIdentifier>{0069582c-4202-4457-92ca-8dc6a3274496}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\include\crypto\hash">
+      <UniqueIdentifier>{065a4517-81ed-47df-8310-72466b511a62}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\include\crypto\key">
+      <UniqueIdentifier>{007e9754-e2ac-47c7-b0c0-e967f4b2bd2f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\include\crypto\stream">
+      <UniqueIdentifier>{a834b352-e0b6-4359-b67f-472c7eb51592}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\include\crypto\core">
+      <UniqueIdentifier>{2e2e16e6-cd94-4625-83b5-8a76e54929d3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\include\crypto\cipher">
+      <UniqueIdentifier>{250e8988-b980-4313-ad1c-34a71e1f5ee4}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\crypto\cipher\aes_engine_ref.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="app\crypto_cli.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="bench\bench_ctr_sha512.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\crypto\cipher\aes_engine_ttable.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\crypto\cipher\aes_sbox_math.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\crypto\cipher\blockcipher.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\crypto\cipher\gf256_math.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\crypto\hash\hash_sha512.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\crypto\key\key_context.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\crypto\mode\mode_ctr.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\crypto\stream\stream_api.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="tests\test_mode_ctr.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="tests\test_sha512.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="app\app.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\crypto\hash\hmac.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="app\ui_helpers.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="app\perf_utils.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="app\worker.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\crypto\cipher\aes_engine_ref.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="include\crypto\cipher\aes_engine_ttable.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="include\crypto\cipher\aes_sbox_math.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="include\crypto\cipher\gf256_math.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="include\crypto\core\blockcipher.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="include\crypto\hash\hash_sha512.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="include\crypto\key\key_context.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="include\crypto\mode\mode_ctr.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="include\crypto\stream\stream_api.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="include\crypto\bytes.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="include\crypto\status.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="include\crypto\hash\hmac.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="app\ui_helpers.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="app\perf_utils.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="app\worker.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
