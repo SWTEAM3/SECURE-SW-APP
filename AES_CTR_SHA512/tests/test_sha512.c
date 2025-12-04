@@ -1,11 +1,11 @@
-#include <stdio.h>
+ï»¿#include <stdio.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
 
 #include "crypto/hash/hash_sha512.h"
 
-// Çí½º À¯Æ¿
+// í—¥ìŠ¤ ìœ í‹¸
 static int hexval(char c) {
     if ('0' <= c && c <= '9') return c - '0';
     if ('a' <= c && c <= 'f') return c - 'a' + 10;
@@ -31,7 +31,7 @@ static int bytes_eq(const unsigned char* a, const unsigned char* b, size_t n) {
     return memcmp(a, b, n) == 0;
 }
 
-// º¤ÅÍ
+// ë²¡í„°
 typedef struct sha_vec_t {
     const char* name;
     const unsigned char* msg;
@@ -142,7 +142,7 @@ static int run_million_a_test(void)
     return 1;
 }
 
-// ´õ ÀÌ»ó mainÀÌ ¾Æ´Ô. Å×½ºÆ®¿ë ÇÔ¼ö.
+// ë” ì´ìƒ mainì´ ì•„ë‹˜. í…ŒìŠ¤íŠ¸ìš© í•¨ìˆ˜.
 int test_sha512_main(void)
 {
     int ok = 1;

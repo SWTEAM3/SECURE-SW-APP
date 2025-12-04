@@ -1,11 +1,11 @@
-#include "crypto/cipher/aes_sbox_math.h"
+ï»¿#include "crypto/cipher/aes_sbox_math.h"
 
-// AES ¾ÆÇÉ º¯È¯¿¡¼­ »ç¿ëÇÏ´Â »ó¼ö
-// 0x63 = 0110 0011©ü
+// AES ì•„í•€ ë³€í™˜ì—ì„œ ì‚¬ìš©í•˜ëŠ” ìƒìˆ˜
+// 0x63 = 0110 0011â‚‚
 static unsigned char aes_affine(unsigned char x)
 {
     unsigned char y = 0;
-    // ¾ÆÇÉ º¯È¯: y = M*x + c (GF(2) Çà·Ä ¿¬»ê)
+    // ì•„í•€ ë³€í™˜: y = M*x + c (GF(2) í–‰ë ¬ ì—°ì‚°)
     y ^= (x << 1) | (x >> 7);
     y ^= (x << 2) | (x >> 6);
     y ^= (x << 3) | (x >> 5);
@@ -21,25 +21,25 @@ unsigned char aes_sbox_eval(unsigned char x)
     return aes_affine(inv);
 }
 
-// Inv S-box °è»ê (¿ª¾ÆÇÉ + ¿ª¿ø)
+// Inv S-box ê³„ì‚° (ì—­ì•„í•€ + ì—­ì›)
 static unsigned char aes_inv_affine(unsigned char y)
 {
     unsigned char x = 0;
-    // ¾ÆÇÉ ¿ªº¯È¯(Çà·Ä ¿ª + »ó¼ö Á¦°Å)
+    // ì•„í•€ ì—­ë³€í™˜(í–‰ë ¬ ì—­ + ìƒìˆ˜ ì œê±°)
     x ^= (y << 1) | (y >> 7);
     x ^= (y << 3) | (y >> 5);
     x ^= (y << 6) | (y >> 2);
-    x ^= 0x05; // ¿ªº¯È¯ »ó¼ö
+    x ^= 0x05; // ì—­ë³€í™˜ ìƒìˆ˜
     return x;
 }
 
 unsigned char aes_inv_sbox_eval(unsigned char y)
 {
     unsigned char xa = aes_inv_affine(y);
-    return gf256_inv(xa);  // ¿ª¿ø
+    return gf256_inv(xa);  // ì—­ì›
 }
 
-// ÀüÃ¼ 256¹ÙÀÌÆ® Å×ÀÌºí »ı¼º
+// ì „ì²´ 256ë°”ì´íŠ¸ í…Œì´ë¸” ìƒì„±
 void aes_sbox_build_tables(unsigned char sbox[256],
     unsigned char inv_sbox[256])
 {

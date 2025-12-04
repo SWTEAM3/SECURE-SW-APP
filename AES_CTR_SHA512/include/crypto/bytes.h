@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -8,8 +8,8 @@ extern "C" {
     // ===============================
     // Big-Endian load/store helpers
     // ===============================
-    // AES Å°½ºÄÉÁÙ/¶ó¿îµåÅ°, SHA-512 ¸Ş½ÃÁö µğÄÚµù¿¡¼­
-    // ¡°¹ÙÀÌÆ® ¹è¿­ ¡ê ¿öµå(uint32/uint64)¡± º¯È¯À» ÅëÀÏÇÏ±â À§ÇÑ °ø¿ë ÇÔ¼öµé
+    // AES í‚¤ìŠ¤ì¼€ì¤„/ë¼ìš´ë“œí‚¤, SHA-512 ë©”ì‹œì§€ ë””ì½”ë”©ì—ì„œ
+    // â€œë°”ì´íŠ¸ ë°°ì—´ â†” ì›Œë“œ(uint32/uint64)â€ ë³€í™˜ì„ í†µì¼í•˜ê¸° ìœ„í•œ ê³µìš© í•¨ìˆ˜ë“¤
 
     static inline uint32_t load_be32(const unsigned char b[4]) {
         return ((uint32_t)b[0] << 24) |

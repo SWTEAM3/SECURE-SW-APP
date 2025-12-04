@@ -1,11 +1,11 @@
-#include "crypto/core/blockcipher.h"
+ï»¿#include "crypto/core/blockcipher.h"
 #include "crypto/status.h"
 
 #include <stdlib.h>
 
 // blockcipher_init:
-// - ¿£ÁøÀÇ init ÇÔ¼ö(vtable->init)¸¦ È£Ãâ
-// - ½ÇÆÐÇÏ¸é NULL ¹ÝÈ¯
+// - ì—”ì§„ì˜ init í•¨ìˆ˜(vtable->init)ë¥¼ í˜¸ì¶œ
+// - ì‹¤íŒ¨í•˜ë©´ NULL ë°˜í™˜
 blockcipher_t* blockcipher_init(const blockcipher_vtable_t* engine,
     const unsigned char* key,
     int key_len)
@@ -28,8 +28,8 @@ blockcipher_t* blockcipher_init(const blockcipher_vtable_t* engine,
 }
 
 // blockcipher_free:
-// - ³»ºÎ ctx free
-// - ±¸Á¶Ã¼ free
+// - ë‚´ë¶€ ctx free
+// - êµ¬ì¡°ì²´ free
 void blockcipher_free(blockcipher_t* bc)
 {
     if (!bc) return;

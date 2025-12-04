@@ -1,11 +1,11 @@
-#include "crypto/key/key_context.h"
+ï»¿#include "crypto/key/key_context.h"
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
 
 static void fill_random(unsigned char* out, size_t len)
 {
-    // µ¥¸ğ¿ë ´Ü¼ø ³­¼ö. ½ÇÁ¦·Î´Â ¹İµå½Ã CSPRNG ½á¾ß ÇÔ.
+    // ë°ëª¨ìš© ë‹¨ìˆœ ë‚œìˆ˜. ì‹¤ì œë¡œëŠ” ë°˜ë“œì‹œ CSPRNG ì¨ì•¼ í•¨.
     static int inited = 0;
     if (!inited) {
         srand((unsigned int)(time(NULL) ^ (uintptr_t)out));
@@ -31,7 +31,7 @@ void key_context_init_seed(key_context_t* kc,
     if (!kc) return;
     memset(kc->master_key, 0, sizeof(kc->master_key));
 
-    // ¾ÆÁÖ ´Ü¼øÇÑ seed¡æmaster_key È®»ê (µ¥¸ğ¿ë)
+    // ì•„ì£¼ ë‹¨ìˆœí•œ seedâ†’master_key í™•ì‚° (ë°ëª¨ìš©)
     for (unsigned int i = 0; i < seed_len; i++) {
         kc->master_key[i % sizeof(kc->master_key)] ^= seed[i];
         kc->master_key[(i * 7u) % sizeof(kc->master_key)] += (unsigned char)(seed[i] + i);
@@ -48,7 +48,7 @@ void key_context_derive(key_context_t* kc, unsigned int key_len_bytes)
     }
     kc->enc_key_len = key_len_bytes;
 
-    // ¿©±â¼­´Â ±×³É master_key ¾ÕºÎºĞÀ» enc_key·Î »ç¿ë (µ¥¸ğ)
+    // ì—¬ê¸°ì„œëŠ” ê·¸ëƒ¥ master_key ì•ë¶€ë¶„ì„ enc_keyë¡œ ì‚¬ìš© (ë°ëª¨)
     memcpy(kc->enc_key, kc->master_key, key_len_bytes);
     if (key_len_bytes < sizeof(kc->enc_key)) {
         memset(kc->enc_key + key_len_bytes, 0, sizeof(kc->enc_key) - key_len_bytes);

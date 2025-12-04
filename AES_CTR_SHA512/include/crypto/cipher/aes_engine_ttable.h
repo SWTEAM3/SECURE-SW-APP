@@ -1,12 +1,12 @@
-#pragma once
+ï»¿#pragma once
 #include "crypto/core/blockcipher.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-	// T-table AES ¿£Áø(vtable)
-	// ·¹ÆÛ·±½º ¿£Áø°ú ¿ÏÀüÈ÷ µ¿ÀÏÇÑ ÀÎÅÍÆäÀÌ½º¸¦ Á¦°øÇØ¾ß ±³Ã¼ °¡´É
+	// T-table AES ì—”ì§„(vtable)
+	// ë ˆí¼ëŸ°ìŠ¤ ì—”ì§„ê³¼ ì™„ì „íˆ ë™ì¼í•œ ì¸í„°í˜ì´ìŠ¤ë¥¼ ì œê³µí•´ì•¼ êµì²´ ê°€ëŠ¥
 	extern const blockcipher_vtable_t AES_TTABLE_ENGINE;
 
 #ifdef __cplusplus

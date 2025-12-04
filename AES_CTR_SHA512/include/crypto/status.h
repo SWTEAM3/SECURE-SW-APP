@@ -1,20 +1,20 @@
-#pragma once
+ï»¿#pragma once
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-    // Ç¥ÁØ ¿¡·¯/¼º°ø ÄÚµå
-    // ¸ðµç API°¡ µ¿ÀÏÇÑ ±Ô¾àÀ» »ç¿ëÇÏµµ·Ï ÅëÀÏ
+    // í‘œì¤€ ì—ëŸ¬/ì„±ê³µ ì½”ë“œ
+    // ëª¨ë“  APIê°€ ë™ì¼í•œ ê·œì•½ì„ ì‚¬ìš©í•˜ë„ë¡ í†µì¼
 
     typedef enum crypto_status_t {
-        CRYPTO_OK = 0,          // ¼º°ø
-        CRYPTO_ERR_NULL = -1,   // NULL Æ÷ÀÎÅÍ Àü´Þ
-        CRYPTO_ERR_IO = -2,     // ÆÄÀÏ I/O ½ÇÆÐ
-        CRYPTO_ERR_KEY = -3,    // Àß¸øµÈ Å° ¶Ç´Â ±æÀÌ
-        CRYPTO_ERR_INVALID = -4,// Àß¸øµÈ ÀÔ·Â ÀÎÀÚ
-        CRYPTO_ERR_MEMORY = -5, // ¸Þ¸ð¸® ÇÒ´ç ½ÇÆÐ
-        CRYPTO_ERR_STATE = -6   // Àß¸øµÈ »óÅÂ
+        CRYPTO_OK = 0,          // ì„±ê³µ
+        CRYPTO_ERR_NULL = -1,   // NULL í¬ì¸í„° ì „ë‹¬
+        CRYPTO_ERR_IO = -2,     // íŒŒì¼ I/O ì‹¤íŒ¨
+        CRYPTO_ERR_KEY = -3,    // ìž˜ëª»ëœ í‚¤ ë˜ëŠ” ê¸¸ì´
+        CRYPTO_ERR_INVALID = -4,// ìž˜ëª»ëœ ìž…ë ¥ ì¸ìž
+        CRYPTO_ERR_MEMORY = -5, // ë©”ëª¨ë¦¬ í• ë‹¹ ì‹¤íŒ¨
+        CRYPTO_ERR_STATE = -6   // ìž˜ëª»ëœ ìƒíƒœ
     } crypto_status_t;
 
 #ifdef __cplusplus

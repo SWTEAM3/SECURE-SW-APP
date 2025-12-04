@@ -1,4 +1,4 @@
-#include "crypto/hash/hash_sha512.h"
+ï»¿#include "crypto/hash/hash_sha512.h"
 #include "crypto/bytes.h"
 #include <string.h>
 #include <stdint.h>
@@ -59,7 +59,7 @@ static inline uint64_t shr64(uint64_t x, int n) {
     return x >> n;
 }
 
-// Big sigma (¥Ò) and small sigma (¥ò)
+// Big sigma (Î£) and small sigma (Ïƒ)
 static inline uint64_t SIGMA0(uint64_t x) {
     return rotr64(x, 28) ^ rotr64(x, 34) ^ rotr64(x, 39);
 }

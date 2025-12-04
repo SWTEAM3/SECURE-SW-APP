@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include "crypto/core/blockcipher.h"
 
 #ifdef __cplusplus
@@ -6,27 +6,27 @@ extern "C" {
 #endif
 
     // CTR(CountER) mode context
-    // ºí·Ï¾ÏÈ£ ¿£Áø(blockcipher_vtable)¸¸ ÁÖÀÔ¹Ş°í,
-    // ³»ºÎ µ¿ÀÛÀº AES µî Æ¯Á¤ ¾Ë°í¸®ÁòÀ» ¸ô¶óµµ µÊ.
+    // ë¸”ë¡ì•”í˜¸ ì—”ì§„(blockcipher_vtable)ë§Œ ì£¼ì…ë°›ê³ ,
+    // ë‚´ë¶€ ë™ì‘ì€ AES ë“± íŠ¹ì • ì•Œê³ ë¦¬ì¦˜ì„ ëª°ë¼ë„ ë¨.
 
     typedef struct ctr_mode_ctx_t {
-        blockcipher_t* bc;      // ºí·Ï¾ÏÈ£ ¿£Áø
-        unsigned char counter[16]; // ÇöÀç Ä«¿îÅÍ ºí·Ï
+        blockcipher_t* bc;      // ë¸”ë¡ì•”í˜¸ ì—”ì§„
+        unsigned char counter[16]; // í˜„ì¬ ì¹´ìš´í„° ë¸”ë¡
     } ctr_mode_ctx_t;
 
-    // CTR ÃÊ±âÈ­: iv´Â ¹İµå½Ã 16¹ÙÀÌÆ®(ºí·Ï Å©±â)
+    // CTR ì´ˆê¸°í™”: ivëŠ” ë°˜ë“œì‹œ 16ë°”ì´íŠ¸(ë¸”ë¡ í¬ê¸°)
     ctr_mode_ctx_t* ctr_mode_init(const blockcipher_vtable_t* engine,
         const unsigned char* key,
         int key_len,
         const unsigned char iv[16]);
 
-    // CTR update: in/out ¹öÆÛ´Â °°Àº °÷ °¡´É (XOR ±â¹İ)
+    // CTR update: in/out ë²„í¼ëŠ” ê°™ì€ ê³³ ê°€ëŠ¥ (XOR ê¸°ë°˜)
     void ctr_mode_update(ctr_mode_ctx_t* ctx,
         const unsigned char* in,
         unsigned char* out,
         int len);
 
-    // ÇØÁ¦
+    // í•´ì œ
     void ctr_mode_free(ctr_mode_ctx_t* ctx);
 
 #ifdef __cplusplus

@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 
 #include <stdint.h>
 #include <stddef.h>
@@ -7,26 +7,26 @@
 extern "C" {
 #endif
 
-    // ÃÖ´ë 256ºñÆ® Å°±îÁö °ü¸®ÇÏ´Â °£´ÜÇÑ Å° ÄÁÅØ½ºÆ®
+    // ìµœëŒ€ 256ë¹„íŠ¸ í‚¤ê¹Œì§€ ê´€ë¦¬í•˜ëŠ” ê°„ë‹¨í•œ í‚¤ ì»¨í…ìŠ¤íŠ¸
     typedef struct key_context_t {
         unsigned char master_key[32];  // 256-bit
-        unsigned char enc_key[32];     // ÆÄ»ıµÈ Å°
-        unsigned int  enc_key_len;     // enc_key ±æÀÌ(¹ÙÀÌÆ®)
+        unsigned char enc_key[32];     // íŒŒìƒëœ í‚¤
+        unsigned int  enc_key_len;     // enc_key ê¸¸ì´(ë°”ì´íŠ¸)
     } key_context_t;
 
-    // ·£´ı master_key »ı¼º
+    // ëœë¤ master_key ìƒì„±
     void key_context_init_random(key_context_t* kc);
 
-    // seed ±â¹İÀ¸·Î master_key »ı¼º(Å×½ºÆ®/ÀçÇö¿ë)
+    // seed ê¸°ë°˜ìœ¼ë¡œ master_key ìƒì„±(í…ŒìŠ¤íŠ¸/ì¬í˜„ìš©)
     void key_context_init_seed(key_context_t* kc,
         const unsigned char* seed,
         unsigned int seed_len);
 
-    // master_key¿¡¼­ enc_key ÆÄ»ı
+    // master_keyì—ì„œ enc_key íŒŒìƒ
     // key_len_bytes: 16(128) / 24(192) / 32(256)
     void key_context_derive(key_context_t* kc, unsigned int key_len_bytes);
 
-    // ¸Ş¸ğ¸® Áö¿ì±â
+    // ë©”ëª¨ë¦¬ ì§€ìš°ê¸°
     void key_context_clear(key_context_t* kc);
 
 #ifdef __cplusplus

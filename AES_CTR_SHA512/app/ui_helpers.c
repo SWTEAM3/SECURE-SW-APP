@@ -1,11 +1,13 @@
 ﻿#define _CRT_SECURE_NO_WARNINGS
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <commctrl.h>   // PROGRESS_CLASSA, PBS_SMOOTH, PBM_SETRANGE, PBM_SETPOS
 #include "ui_helpers.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
 #include <time.h>
-#include <commctrl.h>   // PROGRESS_CLASSA, PBS_SMOOTH, PBM_SETRANGE, PBM_SETPOS
 
 // 컨트롤 생성 헬퍼
 HWND CreateControl(HINSTANCE hInst, HWND hParent, const char* className, 

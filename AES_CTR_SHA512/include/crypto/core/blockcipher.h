@@ -1,10 +1,10 @@
-#pragma once
+ï»¿#pragma once
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-    // ºí·Ï ¾ÏÈ£ ¿£Áø °ø¿ë vtable ±¸Á¶Ã¼
+    // ë¸”ë¡ ì•”í˜¸ ì—”ì§„ ê³µìš© vtable êµ¬ì¡°ì²´
     typedef struct blockcipher_vtable_t {
         void* (*init)(const unsigned char* key, int key_len);
         void  (*encrypt_block)(void* ctx, const unsigned char in[16], unsigned char out[16]);
@@ -12,13 +12,13 @@ extern "C" {
         void  (*free)(void* ctx);
     } blockcipher_vtable_t;
 
-    // ¿£Áø ÄÁÅØ½ºÆ®
+    // ì—”ì§„ ì»¨í…ìŠ¤íŠ¸
     typedef struct blockcipher_t {
         const blockcipher_vtable_t* vtable;
         void* ctx;
     } blockcipher_t;
 
-    // blockcipher ÃÊ±âÈ­/ÇØÁ¦
+    // blockcipher ì´ˆê¸°í™”/í•´ì œ
     blockcipher_t* blockcipher_init(const blockcipher_vtable_t* engine,
         const unsigned char* key,
         int key_len);

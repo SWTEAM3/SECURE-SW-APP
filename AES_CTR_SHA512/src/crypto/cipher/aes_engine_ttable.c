@@ -1,21 +1,24 @@
-// ===============================================================
-// AES T-Table Engine (Á¤»ó µ¿ÀÛµÇ´Â ¿ÏÀü ¼öÁ¤º»)
+ï»¿// ===============================================================
+// AES T-Table Engine (í…Œì´ë¸” ê¸°ë°˜ AES ì—”ì§„)
+//  - ë¼ìš´ë“œ í‚¤ë¥¼ ë¯¸ë¦¬ ëª¨ë‘ ê³„ì‚°í•´ rk[60]ì— ì €ì¥í•˜ëŠ” ë°©ì‹
+//  - on-the-fly í‚¤ìŠ¤ì¼€ì¤„ì€ ì‚¬ìš©í•˜ì§€ ì•ŠìŒ
 // ===============================================================
 
 #include "crypto/cipher/aes_engine_ttable.h"
 #include "crypto/cipher/aes_sbox_math.h"
 #include "crypto/bytes.h"
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 
 // ---------------------------------------------------------------
-// ³»ºÎ ÄÁÅØ½ºÆ®
+// ë‚´ë¶€ ì»¨í…ìŠ¤íŠ¸
 // ---------------------------------------------------------------
 typedef struct aes_ttab_ctx_t {
     int Nk;
     int Nr;
-    uint32_t rk[60];
+    uint32_t rk[60];        // ë¼ìš´ë“œ í‚¤ (ìµœëŒ€ 4*(14+1)=60)
 
     uint32_t Te0[256], Te1[256], Te2[256], Te3[256];
     uint32_t Td0[256], Td1[256], Td2[256], Td3[256];
@@ -25,7 +28,7 @@ typedef struct aes_ttab_ctx_t {
 } aes_ttab_ctx_t;
 
 // ---------------------------------------------------------------
-// RCON µî
+// RCON ìƒìˆ˜
 // ---------------------------------------------------------------
 static const uint32_t RCON[10] = {
     0x01000000,0x02000000,0x04000000,0x08000000,
@@ -43,7 +46,7 @@ static uint32_t sub_word(uint32_t x, const unsigned char s[256]) {
 }
 
 // ---------------------------------------------------------------
-// Å° È®Àå
+// í‚¤ í™•ì¥ (í‘œì¤€ AES Key Schedule)
 // ---------------------------------------------------------------
 static void aes_key_expand(uint32_t* rk,
     const unsigned char* key,
@@ -76,7 +79,7 @@ static void aes_key_expand(uint32_t* rk,
 }
 
 // ---------------------------------------------------------------
-// GF(2^8) ±âº» ¿¬»ê
+// GF(2^8) ê¸°ë³¸ ì—°ì‚°
 // ---------------------------------------------------------------
 static inline unsigned char xt(unsigned char x) {
     return (x & 0x80) ? ((x << 1) ^ 0x1B) : (x << 1);
@@ -106,12 +109,12 @@ static inline uint32_t rotl8(uint32_t x) {
 }
 
 // ---------------------------------------------------------------
-// T-Table »ı¼º
+// T-Table ë¹Œë“œ
 // ---------------------------------------------------------------
 static void aes_ttable_build(aes_ttab_ctx_t* c)
 {
     for (int i = 0; i < 256; i++) {
-        unsigned char s = c->sbox[i];
+        unsigned char s  = c->sbox[i];
         unsigned char is = c->inv_sbox[i];
 
         uint32_t te0 =
@@ -127,8 +130,8 @@ static void aes_ttable_build(aes_ttab_ctx_t* c)
 
         uint32_t td0 =
             ((uint32_t)m14(is) << 24) |
-            ((uint32_t)m9(is) << 16) |
-            ((uint32_t)m13(is) << 8) |
+            ((uint32_t)m9(is)  << 16) |
+            ((uint32_t)m13(is) << 8)  |
             ((uint32_t)m11(is));
 
         c->Td0[i] = td0;
@@ -139,7 +142,7 @@ static void aes_ttable_build(aes_ttab_ctx_t* c)
 }
 
 // ---------------------------------------------------------------
-// ÃÊ±âÈ­
+// ì´ˆê¸°í™”
 // ---------------------------------------------------------------
 static void* aes_ttab_init_impl(const unsigned char* key, int key_len)
 {
@@ -159,12 +162,9 @@ static void* aes_ttab_init_impl(const unsigned char* key, int key_len)
     return c;
 }
 
-// aes_engine_ttable.c ¾È¿¡¼­ ÀÌ µÎ ÇÔ¼ö¸¸ **±×´ë·Î ±³Ã¼**ÇØÁà.
-// ³ª¸ÓÁö ÄÚµå´Â °Çµå¸®Áö ¸»°í, encrypt/decrypt¸¸ ¾Æ·¡ ¹öÀüÀ¸·Î »ç¿ëÇÏ¸é
-// ref / ttable µÑ ´Ù NIST CTR 128 ±âÁØÀ¸·Î ¿ÏÀüÈ÷ ÀÏÄ¡ÇÏ°Ô µÈ´Ù.
-
 // ---------------------------------------------------------------------
-// AES T-table ¿£Áø: ¾ÏÈ£È­ (½ÇÁ¦´Â S-box + GF(2^8) ¿¬»êÀ¸·Î ±¸Çö)
+// AES T-table ì—”ì§„: ì•”í˜¸í™”
+//  - í‘œì¤€ AES ë¼ìš´ë“œë¥¼ ê·¸ëŒ€ë¡œ êµ¬í˜„í•˜ë˜, ë¼ìš´ë“œ í‚¤ëŠ” rk[]ì—ì„œ êº¼ë‚´ ì‚¬ìš©
 // ---------------------------------------------------------------------
 static void aes_ttab_encrypt_block_impl(void* vctx,
     const unsigned char in[16],
@@ -195,7 +195,7 @@ static void aes_ttab_encrypt_block_impl(void* vctx,
         for (int i = 0; i < 16; i++)
             state[i] = sbox[state[i]];
 
-        // ShiftRows (column-major ÀÎµ¦½º ±âÁØ)
+        // ShiftRows (column-major ì¸ë±ìŠ¤ ê¸°ì¤€)
         unsigned char t;
 
         // row1: [1,5,9,13] -> [5,9,13,1]
@@ -279,7 +279,7 @@ static void aes_ttab_encrypt_block_impl(void* vctx,
     state[11] = state[7];
     state[7] = t;
 
-    // AddRoundKey (¸¶Áö¸· round key)
+    // AddRoundKey (ë§ˆì§€ë§‰ ë¼ìš´ë“œ í‚¤)
     for (int c = 0; c < 4; c++) {
         uint32_t k = rk[4 * Nr + c];
         state[4 * c + 0] ^= (unsigned char)(k >> 24);
@@ -292,14 +292,12 @@ static void aes_ttab_encrypt_block_impl(void* vctx,
 }
 
 // ---------------------------------------------------------------------
-// CTR¸¸ ¾µ °Å¸é decryptµµ encrypt·Î µ¹·Áµµ µ¿ÀÛÀº µ¿ÀÏÇÏ´Ù.
-// (ECB/CFB µî ¿ª¹æÇâÀÌ ÇÊ¿äÇÏ¸é µû·Î ±¸ÇöÇØ¾ß ÇÔ.)
+// CTR ëª¨ë“œì—ì„œëŠ” decrypt = encrypt ì´ë¯€ë¡œ, decrypt ëŠ” encrypt ë¥¼ ê·¸ëŒ€ë¡œ ì‚¬ìš©
 // ---------------------------------------------------------------------
 static void aes_ttab_decrypt_block_impl(void* vctx,
     const unsigned char in[16],
     unsigned char out[16])
 {
-    // CTR ¸ğµå¿¡¼­¸¸ ¾²ÀÏ °Å¶ó decrypt = encrypt ·Î µĞ´Ù.
     aes_ttab_encrypt_block_impl(vctx, in, out);
 }
 
@@ -317,3 +315,5 @@ const blockcipher_vtable_t AES_TTABLE_ENGINE = {
     aes_ttab_decrypt_block_impl,
     aes_ttab_free_impl
 };
+
+

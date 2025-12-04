@@ -1,4 +1,4 @@
-#include <stdio.h>
+ï»¿#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -7,7 +7,7 @@
 #include "crypto/cipher/aes_engine_ttable.h"
 #include "crypto/bytes.h"
 
-// Çí½º À¯Æ¿
+// í—¥ìŠ¤ ìœ í‹¸
 static int hexval(char c) {
     if ('0' <= c && c <= '9') return c - '0';
     if ('a' <= c && c <= 'f') return c - 'a' + 10;
@@ -33,7 +33,7 @@ static void dump_hex(const unsigned char* x, size_t n) {
     printf("\n");
 }
 
-// º¤ÅÍ Á¤ÀÇ
+// ë²¡í„° ì •ì˜
 typedef struct ctr_vec_t {
     const char* name;
     const char* key_hex;
@@ -43,7 +43,7 @@ typedef struct ctr_vec_t {
     const char* ct_hex;
 } ctr_vec_t;
 
-// NIST CTR º¤ÅÍ
+// NIST CTR ë²¡í„°
 static const ctr_vec_t VECTORS[] = {
     {
         "AES-CTR-128",
@@ -162,7 +162,7 @@ static int run_negative_tests(void)
     return 1;
 }
 
-// ´õ ÀÌ»ó mainÀÌ ¾Æ´Ô. Å×½ºÆ®¿ë ÇÔ¼ö.
+// ë” ì´ìƒ mainì´ ì•„ë‹˜. í…ŒìŠ¤íŠ¸ìš© í•¨ìˆ˜.
 int test_mode_ctr_main(void)
 {
     int ok = 1;

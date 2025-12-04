@@ -1,4 +1,4 @@
-#include <stdio.h>
+ï»¿#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -9,7 +9,7 @@
 #include "crypto/mode/mode_ctr.h"
 #include "crypto/hash/hash_sha512.h"
 
-// ===================== °øÅë À¯Æ¿ =====================
+// ===================== ê³µí†µ ìœ í‹¸ =====================
 
 static void trim_newline(char* s)
 {
@@ -77,24 +77,24 @@ static void ask_line(const char* prompt, char* dst, size_t dst_size)
     trim_newline(dst);
 }
 
-// ===================== CLI ¼³Á¤ ±¸Á¶Ã¼ =====================
+// ===================== CLI ì„¤ì • êµ¬ì¡°ì²´ =====================
 
 typedef struct cli_cfg_t {
-    int  mode_type;   // 1=ÆÄÀÏ ¸ğµå, 2=NIST Á¤´ä, 3=NIST ÀÏºÎ·¯ Æ²¸° ±â´ë°ª
-    int  file_enc;    // ÆÄÀÏ ¸ğµå¿¡¼­ 1=enc, 0=dec
+    int  mode_type;   // 1=íŒŒì¼ ëª¨ë“œ, 2=NIST ì •ë‹µ, 3=NIST ì¼ë¶€ëŸ¬ í‹€ë¦° ê¸°ëŒ€ê°’
+    int  file_enc;    // íŒŒì¼ ëª¨ë“œì—ì„œ 1=enc, 0=dec
 
     const blockcipher_vtable_t* engine; // ref / ttable
     int  key_bits;     // 128 / 192 / 256
 
-    int  key_random;   // ÆÄÀÏ ¸ğµå¿¡¼­ 1=random, 0=seed
+    int  key_random;   // íŒŒì¼ ëª¨ë“œì—ì„œ 1=random, 0=seed
     char key_seed[256];
 
     char in_path[512];
     char out_path[512];
 } cli_cfg_t;
 
-// ===================== NIST CTR Å×½ºÆ® º¤ÅÍ ±¸Á¶Ã¼ =====================
-// SP 800-38A CTR-AES128/192/256.Encrypt º¤ÅÍ  [oai_citation:1¢ÔNIST Publications](https://nvlpubs.nist.gov/nistpubs/legacy/sp/nistspecialpublication800-38a.pdf?utm_source=chatgpt.com)
+// ===================== NIST CTR í…ŒìŠ¤íŠ¸ ë²¡í„° êµ¬ì¡°ì²´ =====================
+// SP 800-38A CTR-AES128/192/256.Encrypt ë²¡í„°  [oai_citation:1â€¡NIST Publications](https://nvlpubs.nist.gov/nistpubs/legacy/sp/nistspecialpublication800-38a.pdf?utm_source=chatgpt.com)
 
 typedef struct nist_ctr_vec_t {
     int         key_bits;
@@ -161,75 +161,75 @@ static const nist_ctr_vec_t* find_nist_vec(int key_bits)
     return NULL;
 }
 
-// ===================== ´ëÈ­Çü ¼³Á¤ =====================
+// ===================== ëŒ€í™”í˜• ì„¤ì • =====================
 
 static int interactive_config(cli_cfg_t* cfg)
 {
     memset(cfg, 0, sizeof(*cfg));
 
-    printf("=== AES-CTR + SHA-512 Å×½ºÆ® CLI ===\n");
-    printf("1) ÆÄÀÏ ÀÔ·Â ¸ğµå (¾ÏÈ£È­/º¹È£È­ + Æò¹®/¾ÏÈ£¹®/ÀÎÁõ°ª)\n");
-    printf("2) NIST CTR Å×½ºÆ® º¤ÅÍ (Á¤»ó)\n");
-    printf("3) NIST CTR Å×½ºÆ® º¤ÅÍ (ÀÏºÎ·¯ Æ²¸° ±â´ë°ª)\n");
+    printf("=== AES-CTR + SHA-512 í…ŒìŠ¤íŠ¸ CLI ===\n");
+    printf("1) íŒŒì¼ ì…ë ¥ ëª¨ë“œ (ì•”í˜¸í™”/ë³µí˜¸í™” + í‰ë¬¸/ì•”í˜¸ë¬¸/ì¸ì¦ê°’)\n");
+    printf("2) NIST CTR í…ŒìŠ¤íŠ¸ ë²¡í„° (ì •ìƒ)\n");
+    printf("3) NIST CTR í…ŒìŠ¤íŠ¸ ë²¡í„° (ì¼ë¶€ëŸ¬ í‹€ë¦° ê¸°ëŒ€ê°’)\n");
 
-    int m = ask_int("¸ğµå ¼±ÅÃ (1/2/3): ");
+    int m = ask_int("ëª¨ë“œ ì„ íƒ (1/2/3): ");
     if (m < 1 || m > 3) {
-        printf("Àß¸øµÈ ¼±ÅÃ.\n");
+        printf("ì˜ëª»ëœ ì„ íƒ.\n");
         return 0;
     }
     cfg->mode_type = m;
 
-    // Å° ±æÀÌ
-    int bits = ask_int("Å° ±æÀÌ ¼±ÅÃ (128/192/256): ");
+    // í‚¤ ê¸¸ì´
+    int bits = ask_int("í‚¤ ê¸¸ì´ ì„ íƒ (128/192/256): ");
     if (bits != 128 && bits != 192 && bits != 256) {
-        printf("Áö¿øÇÏÁö ¾Ê´Â Å° ±æÀÌ.\n");
+        printf("ì§€ì›í•˜ì§€ ì•ŠëŠ” í‚¤ ê¸¸ì´.\n");
         return 0;
     }
     cfg->key_bits = bits;
 
-    // AES ¿£Áø ¼±ÅÃ
-    printf("\nAES ¿£Áø ¼±ÅÃ:\n");
-    printf("  1) ref (·¹ÆÛ·±½º ¿£Áø)\n");
-    printf("  2) ttable (T-Table ¿£Áø)\n");
-    int e = ask_int("¿£Áø ¼±ÅÃ (1/2): ");
+    // AES ì—”ì§„ ì„ íƒ
+    printf("\nAES ì—”ì§„ ì„ íƒ:\n");
+    printf("  1) ref (ë ˆí¼ëŸ°ìŠ¤ ì—”ì§„)\n");
+    printf("  2) ttable (T-Table ì—”ì§„)\n");
+    int e = ask_int("ì—”ì§„ ì„ íƒ (1/2): ");
     if (e == 1) cfg->engine = &AES_REF_ENGINE;
     else if (e == 2) cfg->engine = &AES_TTABLE_ENGINE;
     else {
-        printf("Àß¸øµÈ ¼±ÅÃ.\n");
+        printf("ì˜ëª»ëœ ì„ íƒ.\n");
         return 0;
     }
 
     if (cfg->mode_type == 1) {
-        // ÆÄÀÏ ¸ğµå »ó¼¼
-        printf("\nÆÄÀÏ ¸ğµå: 1) ¾ÏÈ£È­  2) º¹È£È­\n");
-        int fe = ask_int("¼±ÅÃ (1/2): ");
+        // íŒŒì¼ ëª¨ë“œ ìƒì„¸
+        printf("\níŒŒì¼ ëª¨ë“œ: 1) ì•”í˜¸í™”  2) ë³µí˜¸í™”\n");
+        int fe = ask_int("ì„ íƒ (1/2): ");
         if (fe == 1) cfg->file_enc = 1;
         else if (fe == 2) cfg->file_enc = 0;
         else {
-            printf("Àß¸øµÈ ¼±ÅÃ.\n");
+            printf("ì˜ëª»ëœ ì„ íƒ.\n");
             return 0;
         }
 
-        ask_line("ÀÔ·Â ÆÄÀÏ °æ·Î: ", cfg->in_path, sizeof(cfg->in_path));
-        ask_line("Ãâ·Â ÆÄÀÏ °æ·Î: ", cfg->out_path, sizeof(cfg->out_path));
+        ask_line("ì…ë ¥ íŒŒì¼ ê²½ë¡œ: ", cfg->in_path, sizeof(cfg->in_path));
+        ask_line("ì¶œë ¥ íŒŒì¼ ê²½ë¡œ: ", cfg->out_path, sizeof(cfg->out_path));
 
-        printf("\nÅ° »ı¼º ¹æ½Ä:\n");
-        printf("  1) ·£´ı Å°\n");
-        printf("  2) seed ±â¹İ °áÁ¤Àû Å°\n");
-        int k = ask_int("¼±ÅÃ (1/2): ");
+        printf("\ní‚¤ ìƒì„± ë°©ì‹:\n");
+        printf("  1) ëœë¤ í‚¤\n");
+        printf("  2) seed ê¸°ë°˜ ê²°ì •ì  í‚¤\n");
+        int k = ask_int("ì„ íƒ (1/2): ");
         if (k == 1) {
             cfg->key_random = 1;
         }
         else if (k == 2) {
             cfg->key_random = 0;
-            ask_line("seed ¹®ÀÚ¿­ ÀÔ·Â: ", cfg->key_seed, sizeof(cfg->key_seed));
+            ask_line("seed ë¬¸ìì—´ ì…ë ¥: ", cfg->key_seed, sizeof(cfg->key_seed));
             if (cfg->key_seed[0] == '\0') {
-                printf("seed°¡ ºñ¾úÀ½.\n");
+                printf("seedê°€ ë¹„ì—ˆìŒ.\n");
                 return 0;
             }
         }
         else {
-            printf("Àß¸øµÈ ¼±ÅÃ.\n");
+            printf("ì˜ëª»ëœ ì„ íƒ.\n");
             return 0;
         }
     }
@@ -237,7 +237,7 @@ static int interactive_config(cli_cfg_t* cfg)
     return 1;
 }
 
-// ===================== ÆÄÀÏ ¸ğµå: Æò¹®/¾ÏÈ£¹®/ÀÎÁõ°ª =====================
+// ===================== íŒŒì¼ ëª¨ë“œ: í‰ë¬¸/ì•”í˜¸ë¬¸/ì¸ì¦ê°’ =====================
 
 static void print_file_pt_ct_auth(const cli_cfg_t* cfg)
 {
@@ -249,36 +249,36 @@ static void print_file_pt_ct_auth(const cli_cfg_t* cfg)
         size_t n_pt = read_prefix(cfg->in_path, buf_pt, sizeof(buf_pt));
         size_t n_ct = read_prefix(cfg->out_path, buf_ct, sizeof(buf_ct));
 
-        printf("\n[Æò¹® ¾ÕºÎºĞ] (%zu bytes from %s)\n", n_pt, cfg->in_path);
+        printf("\n[í‰ë¬¸ ì•ë¶€ë¶„] (%zu bytes from %s)\n", n_pt, cfg->in_path);
         dump_hex(buf_pt, n_pt);
 
-        printf("\n[¾ÏÈ£¹® ¾ÕºÎºĞ] (%zu bytes from %s)\n", n_ct, cfg->out_path);
+        printf("\n[ì•”í˜¸ë¬¸ ì•ë¶€ë¶„] (%zu bytes from %s)\n", n_ct, cfg->out_path);
         dump_hex(buf_ct, n_ct);
 
         if (stream_hash_sha512_file(cfg->out_path, digest) == 0) {
-            printf("\n[¾ÏÈ£¹® ÆÄÀÏ SHA-512 (ÀÎÁõ°ª)]\n");
+            printf("\n[ì•”í˜¸ë¬¸ íŒŒì¼ SHA-512 (ì¸ì¦ê°’)]\n");
             dump_hex(digest, sizeof(digest));
         }
         else {
-            printf("\n[ÀÎÁõ°ª] ¾ÏÈ£¹® ÆÄÀÏÀ» ¿­ ¼ö ¾øÀ½.\n");
+            printf("\n[ì¸ì¦ê°’] ì•”í˜¸ë¬¸ íŒŒì¼ì„ ì—´ ìˆ˜ ì—†ìŒ.\n");
         }
     }
     else {
         size_t n_ct = read_prefix(cfg->in_path, buf_ct, sizeof(buf_ct));
         size_t n_pt = read_prefix(cfg->out_path, buf_pt, sizeof(buf_pt));
 
-        printf("\n[¾ÏÈ£¹® ¾ÕºÎºĞ] (%zu bytes from %s)\n", n_ct, cfg->in_path);
+        printf("\n[ì•”í˜¸ë¬¸ ì•ë¶€ë¶„] (%zu bytes from %s)\n", n_ct, cfg->in_path);
         dump_hex(buf_ct, n_ct);
 
-        printf("\n[º¹È£ Æò¹® ¾ÕºÎºĞ] (%zu bytes from %s)\n", n_pt, cfg->out_path);
+        printf("\n[ë³µí˜¸ í‰ë¬¸ ì•ë¶€ë¶„] (%zu bytes from %s)\n", n_pt, cfg->out_path);
         dump_hex(buf_pt, n_pt);
 
         if (stream_hash_sha512_file(cfg->in_path, digest) == 0) {
-            printf("\n[¾ÏÈ£¹® ÆÄÀÏ SHA-512 (ÀÎÁõ°ª)]\n");
+            printf("\n[ì•”í˜¸ë¬¸ íŒŒì¼ SHA-512 (ì¸ì¦ê°’)]\n");
             dump_hex(digest, sizeof(digest));
         }
         else {
-            printf("\n[ÀÎÁõ°ª] ¾ÏÈ£¹® ÆÄÀÏÀ» ¿­ ¼ö ¾øÀ½.\n");
+            printf("\n[ì¸ì¦ê°’] ì•”í˜¸ë¬¸ íŒŒì¼ì„ ì—´ ìˆ˜ ì—†ìŒ.\n");
         }
     }
 }
@@ -308,11 +308,11 @@ static int run_file_mode(const cli_cfg_t* cfg)
             key_len,
             iv);
         if (rc != 0) {
-            printf("[ERR] ¾ÏÈ£È­ ½ÇÆĞ (rc=%d)\n", rc);
+            printf("[ERR] ì•”í˜¸í™” ì‹¤íŒ¨ (rc=%d)\n", rc);
             key_context_clear(&kc);
             return 1;
         }
-        printf("\n[OK] ¾ÏÈ£È­ ¿Ï·á: %s -> %s (AES-%d-CTR, engine=%s)\n",
+        printf("\n[OK] ì•”í˜¸í™” ì™„ë£Œ: %s -> %s (AES-%d-CTR, engine=%s)\n",
             cfg->in_path, cfg->out_path, cfg->key_bits,
             (cfg->engine == &AES_REF_ENGINE) ? "ref" : "ttable");
     }
@@ -324,11 +324,11 @@ static int run_file_mode(const cli_cfg_t* cfg)
             key_len,
             iv);
         if (rc != 0) {
-            printf("[ERR] º¹È£È­ ½ÇÆĞ (rc=%d)\n", rc);
+            printf("[ERR] ë³µí˜¸í™” ì‹¤íŒ¨ (rc=%d)\n", rc);
             key_context_clear(&kc);
             return 1;
         }
-        printf("\n[OK] º¹È£È­ ¿Ï·á: %s -> %s (AES-%d-CTR, engine=%s)\n",
+        printf("\n[OK] ë³µí˜¸í™” ì™„ë£Œ: %s -> %s (AES-%d-CTR, engine=%s)\n",
             cfg->in_path, cfg->out_path, cfg->key_bits,
             (cfg->engine == &AES_REF_ENGINE) ? "ref" : "ttable");
     }
@@ -338,7 +338,7 @@ static int run_file_mode(const cli_cfg_t* cfg)
     return 0;
 }
 
-// ===================== NIST CTR Å×½ºÆ® =====================
+// ===================== NIST CTR í…ŒìŠ¤íŠ¸ =====================
 
 static void compare_and_report_ct(const unsigned char* actual,
     const unsigned char* expect,
@@ -354,24 +354,24 @@ static void compare_and_report_ct(const unsigned char* actual,
     }
 
     if (first_diff == (size_t)-1) {
-        printf("\n[TESTVEC] OK: ±â´ë ¾ÏÈ£¹®°ú ½ÇÁ¦ ¾ÏÈ£¹®ÀÌ ¿ÏÀüÈ÷ ÀÏÄ¡ÇÕ´Ï´Ù. (ºñ±³ %zu bytes)\n", len);
+        printf("\n[TESTVEC] OK: ê¸°ëŒ€ ì•”í˜¸ë¬¸ê³¼ ì‹¤ì œ ì•”í˜¸ë¬¸ì´ ì™„ì „íˆ ì¼ì¹˜í•©ë‹ˆë‹¤. (ë¹„êµ %zu bytes)\n", len);
         if (wrong_expected) {
-            printf("  (ÇÏÁö¸¸ ÀÌ ¸ğµå´Â ±â´ë°ªÀ» ÀÏºÎ·¯ ±ú¶ß·Á¾ß ÇÏ´Â ¸ğµå¶ó,\n");
-            printf("   ±¸ÇöÀÌ ¸Â´Ù¸é ¿©±â¼­ OK°¡ ³ª¿À¸é ¾È µÊ ¡æ ±â´ë°ª ¼öÁ¤ È®ÀÎ ÇÊ¿ä)\n");
+            printf("  (í•˜ì§€ë§Œ ì´ ëª¨ë“œëŠ” ê¸°ëŒ€ê°’ì„ ì¼ë¶€ëŸ¬ ê¹¨ëœ¨ë ¤ì•¼ í•˜ëŠ” ëª¨ë“œë¼,\n");
+            printf("   êµ¬í˜„ì´ ë§ë‹¤ë©´ ì—¬ê¸°ì„œ OKê°€ ë‚˜ì˜¤ë©´ ì•ˆ ë¨ â†’ ê¸°ëŒ€ê°’ ìˆ˜ì • í™•ì¸ í•„ìš”)\n");
         }
     }
     else {
         size_t block = first_diff / 16;
         size_t offset = first_diff % 16;
-        printf("\n[TESTVEC] FAIL: ¾ÏÈ£¹® ºÒÀÏÄ¡\n");
-        printf("  Ã¹ Â÷ÀÌ À§Ä¡: index=%zu (ºí·Ï index=%zu, ºí·Ï ³» offset=%zu)\n",
+        printf("\n[TESTVEC] FAIL: ì•”í˜¸ë¬¸ ë¶ˆì¼ì¹˜\n");
+        printf("  ì²« ì°¨ì´ ìœ„ì¹˜: index=%zu (ë¸”ë¡ index=%zu, ë¸”ë¡ ë‚´ offset=%zu)\n",
             first_diff, block, offset);
         printf("  expected=%02X, actual=%02X\n",
             expect[first_diff], actual[first_diff]);
 
-        printf("\n  [expected Ã¹ ºí·Ï]\n");
+        printf("\n  [expected ì²« ë¸”ë¡]\n");
         dump_hex(expect, len < 16 ? len : 16);
-        printf("\n  [actual   Ã¹ ºí·Ï]\n");
+        printf("\n  [actual   ì²« ë¸”ë¡]\n");
         dump_hex(actual, len < 16 ? len : 16);
     }
 }
@@ -380,7 +380,7 @@ static int run_nist_ctr(const cli_cfg_t* cfg, int wrong_expected)
 {
     const nist_ctr_vec_t* v = find_nist_vec(cfg->key_bits);
     if (!v) {
-        printf("\n[ERR] ÀÌ Å° ±æÀÌ¿¡ ´ëÇÑ NIST CTR º¤ÅÍ°¡ Á¤ÀÇµÇ¾î ÀÖÁö ¾ÊÀ½.\n");
+        printf("\n[ERR] ì´ í‚¤ ê¸¸ì´ì— ëŒ€í•œ NIST CTR ë²¡í„°ê°€ ì •ì˜ë˜ì–´ ìˆì§€ ì•ŠìŒ.\n");
         return 1;
     }
 
@@ -394,56 +394,56 @@ static int run_nist_ctr(const cli_cfg_t* cfg, int wrong_expected)
         !hex_to_bytes(v->iv_hex, iv, sizeof(iv)) ||
         !hex_to_bytes(v->pt_hex, pt, sizeof(pt)) ||
         !hex_to_bytes(v->ct_hex, ct_expect, sizeof(ct_expect))) {
-        printf("[ERR] NIST º¤ÅÍ Çí½º ÆÄ½Ì ½ÇÆĞ (key_bits=%d)\n", v->key_bits);
+        printf("[ERR] NIST ë²¡í„° í—¥ìŠ¤ íŒŒì‹± ì‹¤íŒ¨ (key_bits=%d)\n", v->key_bits);
         return 1;
     }
 
-    // ÀÏºÎ·¯ Æ²¸° Å×½ºÆ® º¤ÅÍ ¸ğµå¸é ±â´ë°ªÀ» ÀÎÀ§ÀûÀ¸·Î ±ú¶ß¸®±â
+    // ì¼ë¶€ëŸ¬ í‹€ë¦° í…ŒìŠ¤íŠ¸ ë²¡í„° ëª¨ë“œë©´ ê¸°ëŒ€ê°’ì„ ì¸ìœ„ì ìœ¼ë¡œ ê¹¨ëœ¨ë¦¬ê¸°
     if (wrong_expected) {
         ct_expect[0] ^= 0x01;
     }
 
-    // CTR ¾ÏÈ£¹® °è»ê
+    // CTR ì•”í˜¸ë¬¸ ê³„ì‚°
     ctr_mode_ctx_t* ctx = ctr_mode_init(cfg->engine, key, key_len_bytes, iv);
     if (!ctx) {
-        printf("[ERR] CTR ÄÁÅØ½ºÆ® ÃÊ±âÈ­ ½ÇÆĞ\n");
+        printf("[ERR] CTR ì»¨í…ìŠ¤íŠ¸ ì´ˆê¸°í™” ì‹¤íŒ¨\n");
         return 1;
     }
     ctr_mode_update(ctx, pt, ct_calc, (int)sizeof(pt));
     ctr_mode_free(ctx);
 
-    printf("\n=== NIST CTR-AES-%d Å×½ºÆ® (engine=%s, wrong_expected=%s) ===\n",
+    printf("\n=== NIST CTR-AES-%d í…ŒìŠ¤íŠ¸ (engine=%s, wrong_expected=%s) ===\n",
         cfg->key_bits,
         (cfg->engine == &AES_REF_ENGINE) ? "ref" : "ttable",
         wrong_expected ? "YES" : "NO");
 
-    printf("\n[Å°]\n");
+    printf("\n[í‚¤]\n");
     dump_hex(key, key_len_bytes);
 
     printf("\n[IV (counter block)]\n");
     dump_hex(iv, sizeof(iv));
 
-    printf("\n[Æò¹® ÀüÃ¼]\n");
+    printf("\n[í‰ë¬¸ ì „ì²´]\n");
     dump_hex(pt, sizeof(pt));
 
-    printf("\n[½ÇÁ¦ ¾ÏÈ£¹® ÀüÃ¼]\n");
+    printf("\n[ì‹¤ì œ ì•”í˜¸ë¬¸ ì „ì²´]\n");
     dump_hex(ct_calc, sizeof(ct_calc));
 
-    // SHA-512 ÀÎÁõ°ª (½ÇÁ¦ ¾ÏÈ£¹®¿¡ ´ëÇØ)
+    // SHA-512 ì¸ì¦ê°’ (ì‹¤ì œ ì•”í˜¸ë¬¸ì— ëŒ€í•´)
     unsigned char digest[64];
     sha512_ctx_t hctx;
     sha512_init(&hctx);
     sha512_update(&hctx, ct_calc, sizeof(ct_calc));
     sha512_final(&hctx, digest);
-    printf("\n[½ÇÁ¦ ¾ÏÈ£¹® SHA-512 (ÀÎÁõ°ª)]\n");
+    printf("\n[ì‹¤ì œ ì•”í˜¸ë¬¸ SHA-512 (ì¸ì¦ê°’)]\n");
     dump_hex(digest, sizeof(digest));
 
-    // ±â´ë°ª°ú ºñ±³
+    // ê¸°ëŒ€ê°’ê³¼ ë¹„êµ
     compare_and_report_ct(ct_calc, ct_expect, sizeof(ct_calc), wrong_expected);
 
     if (wrong_expected) {
-        printf("\n(Âü°í: ÀÌ ¸ğµå´Â ±â´ë ¾ÏÈ£¹®À» ÀÏºÎ·¯ Æ²¸®°Ô ¸¸µç°ÍÀ¸·Î,\n");
-        printf("       ¾îµğ¼­ ºÒÀÏÄ¡°¡ ³ª´ÂÁö µğ¹ö±ë¿¡ ¾²¶ó°í ¸¸µç ¸ğµåÀÔ´Ï´Ù.)\n");
+        printf("\n(ì°¸ê³ : ì´ ëª¨ë“œëŠ” ê¸°ëŒ€ ì•”í˜¸ë¬¸ì„ ì¼ë¶€ëŸ¬ í‹€ë¦¬ê²Œ ë§Œë“ ê²ƒìœ¼ë¡œ,\n");
+        printf("       ì–´ë””ì„œ ë¶ˆì¼ì¹˜ê°€ ë‚˜ëŠ”ì§€ ë””ë²„ê¹…ì— ì“°ë¼ê³  ë§Œë“  ëª¨ë“œì…ë‹ˆë‹¤.)\n");
     }
 
     return 0;
@@ -455,20 +455,20 @@ static int run_nist_ctr(const cli_cfg_t* cfg, int wrong_expected)
 {
     cli_cfg_t cfg;
     if (!interactive_config(&cfg)) {
-        printf("¼³Á¤ ½ÇÆĞ.\n");
+        printf("ì„¤ì • ì‹¤íŒ¨.\n");
         return 1;
     }
 
     if (cfg.mode_type == 1) {
-        // ÆÄÀÏ ¸ğµå
+        // íŒŒì¼ ëª¨ë“œ
         return run_file_mode(&cfg);
     }
     else if (cfg.mode_type == 2) {
-        // NIST CTR: ¿Ã¹Ù¸¥ ±â´ë°ª
+        // NIST CTR: ì˜¬ë°”ë¥¸ ê¸°ëŒ€ê°’
         return run_nist_ctr(&cfg, 0);
     }
     else {
-        // NIST CTR: ÀÏºÎ·¯ Æ²¸° ±â´ë°ª
+        // NIST CTR: ì¼ë¶€ëŸ¬ í‹€ë¦° ê¸°ëŒ€ê°’
         return run_nist_ctr(&cfg, 1);
     }
 }*/

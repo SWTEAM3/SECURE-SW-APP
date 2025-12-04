@@ -1,10 +1,10 @@
-#include "crypto/cipher/gf256_math.h"
+ï»¿#include "crypto/cipher/gf256_math.h"
 
-// AES¿¡¼­ ¾²´Â GF(2^8) ´ÙÇ×½Ä: x^8 + x^4 + x^3 + x + 1  (0x11B)
+// AESì—ì„œ ì“°ëŠ” GF(2^8) ë‹¤í•­ì‹: x^8 + x^4 + x^3 + x + 1  (0x11B)
 
 // gf256_mul:
-// - ·¯½Ã¾È ÇÇÀüÆ® ¹æ½Ä(shift+xor)
-// - MixColumns, xtime, ¿ª¿ø °è»êÀÇ ±â¹İ
+// - ëŸ¬ì‹œì•ˆ í”¼ì „íŠ¸ ë°©ì‹(shift+xor)
+// - MixColumns, xtime, ì—­ì› ê³„ì‚°ì˜ ê¸°ë°˜
 unsigned char gf256_mul(unsigned char a, unsigned char b)
 {
     unsigned char p = 0;
@@ -13,7 +13,7 @@ unsigned char gf256_mul(unsigned char a, unsigned char b)
 
         unsigned char hi = a & 0x80;
         a <<= 1;
-        if (hi) a ^= 0x1B;  // 0x11B¿¡¼­ x^8 Ç× Á¦°ÅÇÑ °ªÀÌ 0x1B
+        if (hi) a ^= 0x1B;  // 0x11Bì—ì„œ x^8 í•­ ì œê±°í•œ ê°’ì´ 0x1B
 
         b >>= 1;
     }
@@ -21,8 +21,8 @@ unsigned char gf256_mul(unsigned char a, unsigned char b)
 }
 
 // gf256_pow:
-// - °ÅµìÁ¦°ö (¶ó±×¶ûÁÖ½Ä ¿ª¿ø °è»ê¿¡ »ç¿ë)
-// - power´Â ÀÏ¹İ Á¤¼ö(¹ÙÀÌÆ®/¿öµå ´ÜÀ§ ÀÇ¹Ì X)
+// - ê±°ë“­ì œê³± (ë¼ê·¸ë‘ì£¼ì‹ ì—­ì› ê³„ì‚°ì— ì‚¬ìš©)
+// - powerëŠ” ì¼ë°˜ ì •ìˆ˜(ë°”ì´íŠ¸/ì›Œë“œ ë‹¨ìœ„ ì˜ë¯¸ X)
 unsigned char gf256_pow(unsigned char a, unsigned int power)
 {
     unsigned char r = 1;
@@ -36,7 +36,7 @@ unsigned char gf256_pow(unsigned char a, unsigned int power)
 
 // gf256_inv:
 // - a^(2^8-2) = a^254
-// - 0ÀÇ ¿ª¿øÀº AES Á¤ÀÇ»ó 0
+// - 0ì˜ ì—­ì›ì€ AES ì •ì˜ìƒ 0
 unsigned char gf256_inv(unsigned char a)
 {
     if (a == 0) return 0;

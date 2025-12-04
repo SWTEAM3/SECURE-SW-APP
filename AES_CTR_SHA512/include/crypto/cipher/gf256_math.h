@@ -1,19 +1,19 @@
-#pragma once
+ï»¿#pragma once
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-	// GF(2^8) À¯ÇÑÃ¼ ¿¬»ê ¼±¾ğ
-	// AES S-box °è»ê ¹× MixColumns µî¿¡¼­ »ç¿ëµÊ
+	// GF(2^8) ìœ í•œì²´ ì—°ì‚° ì„ ì–¸
+	// AES S-box ê³„ì‚° ë° MixColumns ë“±ì—ì„œ ì‚¬ìš©ë¨
 
-	// °ö¼À: AES¿¡¼­ xtime(), MixColumns¿¡ ÇÊ¼ö
+	// ê³±ì…ˆ: AESì—ì„œ xtime(), MixColumnsì— í•„ìˆ˜
 	unsigned char gf256_mul(unsigned char a, unsigned char b);
 
-	// °ÅµìÁ¦°ö (ÁÖ·Î ¿ª¿ø °è»ê¿ë)
+	// ê±°ë“­ì œê³± (ì£¼ë¡œ ì—­ì› ê³„ì‚°ìš©)
 	unsigned char gf256_pow(unsigned char a, unsigned int power);
 
-	// ¿ª¿ø: AES S-box = a^{-1} ¿¡ ±â¹İ
+	// ì—­ì›: AES S-box = a^{-1} ì— ê¸°ë°˜
 	unsigned char gf256_inv(unsigned char a);
 
 #ifdef __cplusplus

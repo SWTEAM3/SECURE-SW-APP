@@ -29,7 +29,7 @@ void CopyToClipboard(HWND hwnd, HWND hEdit);
 long long GetFileSizeBytes(const char* filepath);
 
 // 진행률 다이얼로그 생성
-HWND CreateProgressDialog(HWND hParent);
+extern HWND CreateProgressDialog(HWND hParent);
 
 // 진행률 업데이트
 void UpdateProgress(int percent);

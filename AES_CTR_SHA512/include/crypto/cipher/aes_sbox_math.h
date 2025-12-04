@@ -1,20 +1,20 @@
-#pragma once
+ï»¿#pragma once
 #include "gf256_math.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-    // AES S-box¸¦ ¡°¼öÇĞÀûÀ¸·Î¡± °è»ê/»ı¼ºÇÏ±â À§ÇÑ ·¹ÀÌ¾î
-    // (ref AES / ttable AES ¸ğµÎ ¿©±â ÀÇÁ¸)
+    // AES S-boxë¥¼ â€œìˆ˜í•™ì ìœ¼ë¡œâ€ ê³„ì‚°/ìƒì„±í•˜ê¸° ìœ„í•œ ë ˆì´ì–´
+    // (ref AES / ttable AES ëª¨ë‘ ì—¬ê¸° ì˜ì¡´)
 
-    // ´ÜÀÏ ¹ÙÀÌÆ® S-box °è»ê: ¿ª¿ø + ¾ÆÇÉ º¯È¯
+    // ë‹¨ì¼ ë°”ì´íŠ¸ S-box ê³„ì‚°: ì—­ì› + ì•„í•€ ë³€í™˜
     unsigned char aes_sbox_eval(unsigned char x);
 
-    // ´ÜÀÏ ¹ÙÀÌÆ® Inv S-box °è»ê (ÇÊ¿ä ½Ã)
+    // ë‹¨ì¼ ë°”ì´íŠ¸ Inv S-box ê³„ì‚° (í•„ìš” ì‹œ)
     unsigned char aes_inv_sbox_eval(unsigned char y);
 
-    // 256 ¿£Æ®¸® S-box / InvS-box Å×ÀÌºí »ı¼º
+    // 256 ì—”íŠ¸ë¦¬ S-box / InvS-box í…Œì´ë¸” ìƒì„±
     void aes_sbox_build_tables(unsigned char sbox[256],
         unsigned char inv_sbox[256]);
 
