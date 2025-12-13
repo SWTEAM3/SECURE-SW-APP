@@ -2,6 +2,7 @@
 // AES T-Table Engine (테이블 기반 AES 엔진)
 //  - 라운드 키를 미리 모두 계산해 rk[60]에 저장하는 방식
 //  - on-the-fly 키스케줄은 사용하지 않음
+//  - 순/역 T-테이블을 미리 만들어 테이블 기반 최적화도 가능하도록 설계
 // ===============================================================
 
 #include "crypto/cipher/aes_engine_ttable.h"
@@ -12,25 +13,37 @@
 #include <stdint.h>
 #include <string.h>
 
+#define AES_BLOCK_BYTES     16
+#define AES_WORD_BYTES      4
+#define AES_BLOCK_WORDS     (AES_BLOCK_BYTES / AES_WORD_BYTES) // 4
+#define AES128_KEY_BYTES    16
+#define AES192_KEY_BYTES    24
+#define AES256_KEY_BYTES    32
+#define AES_MAX_NK          8   // 256비트 키 -> 8 words
+#define AES_MAX_NR          14  // Nk + 6
+#define AES_MAX_EXP_WORDS   (AES_BLOCK_WORDS * (AES_MAX_NR + 1)) // 4*(14+1)=60
+#define AES_RCON_LEN        10
+
 // ---------------------------------------------------------------
 // 내부 컨텍스트
 // ---------------------------------------------------------------
 typedef struct aes_ttab_ctx_t {
-    int Nk;
-    int Nr;
-    uint32_t rk[60];        // 라운드 키 (최대 4*(14+1)=60)
+    int Nk;                     // key words (4/6/8)
+    int Nr;                     // rounds (10/12/14)
+    uint32_t rk[AES_MAX_EXP_WORDS]; // 미리 확장한 라운드 키 (4*(Nr+1) words, 최대 60)
 
+    // 순방향/역방향 T-테이블: SubBytes + MixColumns 조합을 1테이블로 압축
     uint32_t Te0[256], Te1[256], Te2[256], Te3[256];
     uint32_t Td0[256], Td1[256], Td2[256], Td3[256];
 
-    unsigned char sbox[256];
-    unsigned char inv_sbox[256];
+    unsigned char sbox[256];     // SubBytes 테이블
+    unsigned char inv_sbox[256]; // InvSubBytes 테이블
 } aes_ttab_ctx_t;
 
 // ---------------------------------------------------------------
 // RCON 상수
 // ---------------------------------------------------------------
-static const uint32_t RCON[10] = {
+static const uint32_t RCON[AES_RCON_LEN] = {
     0x01000000,0x02000000,0x04000000,0x08000000,
     0x10000000,0x20000000,0x40000000,0x80000000,
     0x1B000000,0x36000000
@@ -53,14 +66,15 @@ static void aes_key_expand(uint32_t* rk,
     int Nk, int Nr,
     const unsigned char sbox[256])
 {
-    int Nb = 4;
-    int total = Nb * (Nr + 1);
+    // 표준 AES Key Schedule. 입력 키는 big-endian으로 워드를 구성하여 rk[]에 채운다.
+    // 이후 워드를 순차 확장해 4*(Nr+1)개 워드를 모두 확보한다.
+    int total = AES_BLOCK_WORDS * (Nr + 1);
 
     for (int i = 0; i < Nk; i++) {
-        rk[i] = ((uint32_t)key[4 * i + 0] << 24) |
-            ((uint32_t)key[4 * i + 1] << 16) |
-            ((uint32_t)key[4 * i + 2] << 8) |
-            ((uint32_t)key[4 * i + 3]);
+        rk[i] = ((uint32_t)key[AES_WORD_BYTES * i + 0] << 24) |
+            ((uint32_t)key[AES_WORD_BYTES * i + 1] << 16) |
+            ((uint32_t)key[AES_WORD_BYTES * i + 2] << 8) |
+            ((uint32_t)key[AES_WORD_BYTES * i + 3]);
     }
 
     for (int i = Nk; i < total; i++) {
@@ -113,6 +127,9 @@ static inline uint32_t rotl8(uint32_t x) {
 // ---------------------------------------------------------------
 static void aes_ttable_build(aes_ttab_ctx_t* c)
 {
+    // 암/복호화용 T-테이블을 한 번만 만들어 엔진 전반에서 재사용.
+    // Te* : SubBytes + ShiftRows + MixColumns 순방향을 합친 32bit 테이블
+    // Td* : 역방향용 (InvSubBytes + InvShiftRows + InvMixColumns)
     for (int i = 0; i < 256; i++) {
         unsigned char s  = c->sbox[i];
         unsigned char is = c->inv_sbox[i];
@@ -147,16 +164,18 @@ static void aes_ttable_build(aes_ttab_ctx_t* c)
 static void* aes_ttab_init_impl(const unsigned char* key, int key_len)
 {
     if (!key) return NULL;
-    if (!(key_len == 16 || key_len == 24 || key_len == 32)) return NULL;
+    if (!(key_len == AES128_KEY_BYTES || key_len == AES192_KEY_BYTES || key_len == AES256_KEY_BYTES)) return NULL;
 
     aes_ttab_ctx_t* c = (aes_ttab_ctx_t*)calloc(1, sizeof(*c));
     if (!c) return NULL;
 
-    c->Nk = key_len / 4;
+    c->Nk = key_len / AES_WORD_BYTES;
     c->Nr = c->Nk + 6;
 
+    // 순/역 S-box 테이블 생성 → 이를 기반으로 T-테이블 생성
     aes_sbox_build_tables(c->sbox, c->inv_sbox);
     aes_ttable_build(c);
+    // 모든 라운드 키를 한 번에 확장해 rk[]에 저장 (암복호화 시 키스케줄 비용 0)
     aes_key_expand(c->rk, key, c->Nk, c->Nr, c->sbox);
 
     return c;
@@ -170,23 +189,26 @@ static void aes_ttab_encrypt_block_impl(void* vctx,
     const unsigned char in[16],
     unsigned char out[16])
 {
+    // 표준 AES 라운드를 그대로 구현하되, 라운드 키는 rk[]에서 바로 읽어온다.
+    // (테이블 기반으로 변형 가능하도록 Te*/Td*를 준비했지만, 여기서는 S-box + MixColumns를 직접 수행)
+    // 키스케줄이 초기화 시 모두 끝났으므로 암호화 시 반복 비용이 적음.
     aes_ttab_ctx_t* ctx = (aes_ttab_ctx_t*)vctx;
     if (!ctx || !in || !out) return;
 
-    unsigned char state[16];
-    memcpy(state, in, 16);
+    unsigned char state[AES_BLOCK_BYTES];
+    memcpy(state, in, AES_BLOCK_BYTES);
 
     const unsigned char* sbox = ctx->sbox;
     uint32_t* rk = ctx->rk;
     int Nr = ctx->Nr;
 
     // -------- Round 0: AddRoundKey --------
-    for (int c = 0; c < 4; c++) {
+    for (int c = 0; c < AES_BLOCK_WORDS; c++) {
         uint32_t k = rk[c];
-        state[4 * c + 0] ^= (unsigned char)(k >> 24);
-        state[4 * c + 1] ^= (unsigned char)(k >> 16);
-        state[4 * c + 2] ^= (unsigned char)(k >> 8);
-        state[4 * c + 3] ^= (unsigned char)(k);
+        state[AES_BLOCK_WORDS * c + 0] ^= (unsigned char)(k >> 24);
+        state[AES_BLOCK_WORDS * c + 1] ^= (unsigned char)(k >> 16);
+        state[AES_BLOCK_WORDS * c + 2] ^= (unsigned char)(k >> 8);
+        state[AES_BLOCK_WORDS * c + 3] ^= (unsigned char)(k);
     }
 
     // -------- Round 1 .. Nr-1 --------
@@ -221,8 +243,8 @@ static void aes_ttab_encrypt_block_impl(void* vctx,
         state[7] = t;
 
         // MixColumns
-        for (int c = 0; c < 4; c++) {
-            int idx = 4 * c;
+        for (int c = 0; c < AES_BLOCK_WORDS; c++) {
+            int idx = AES_BLOCK_WORDS * c;
             unsigned char a0 = state[idx + 0];
             unsigned char a1 = state[idx + 1];
             unsigned char a2 = state[idx + 2];
@@ -240,12 +262,12 @@ static void aes_ttab_encrypt_block_impl(void* vctx,
         }
 
         // AddRoundKey
-        for (int c = 0; c < 4; c++) {
-            uint32_t k = rk[4 * round + c];
-            state[4 * c + 0] ^= (unsigned char)(k >> 24);
-            state[4 * c + 1] ^= (unsigned char)(k >> 16);
-            state[4 * c + 2] ^= (unsigned char)(k >> 8);
-            state[4 * c + 3] ^= (unsigned char)(k);
+        for (int c = 0; c < AES_BLOCK_WORDS; c++) {
+            uint32_t k = rk[AES_BLOCK_WORDS * round + c];
+            state[AES_BLOCK_WORDS * c + 0] ^= (unsigned char)(k >> 24);
+            state[AES_BLOCK_WORDS * c + 1] ^= (unsigned char)(k >> 16);
+            state[AES_BLOCK_WORDS * c + 2] ^= (unsigned char)(k >> 8);
+            state[AES_BLOCK_WORDS * c + 3] ^= (unsigned char)(k);
         }
     }
 
@@ -280,12 +302,12 @@ static void aes_ttab_encrypt_block_impl(void* vctx,
     state[7] = t;
 
     // AddRoundKey (마지막 라운드 키)
-    for (int c = 0; c < 4; c++) {
-        uint32_t k = rk[4 * Nr + c];
-        state[4 * c + 0] ^= (unsigned char)(k >> 24);
-        state[4 * c + 1] ^= (unsigned char)(k >> 16);
-        state[4 * c + 2] ^= (unsigned char)(k >> 8);
-        state[4 * c + 3] ^= (unsigned char)(k);
+    for (int c = 0; c < AES_BLOCK_WORDS; c++) {
+        uint32_t k = rk[AES_BLOCK_WORDS * Nr + c];
+        state[AES_BLOCK_WORDS * c + 0] ^= (unsigned char)(k >> 24);
+        state[AES_BLOCK_WORDS * c + 1] ^= (unsigned char)(k >> 16);
+        state[AES_BLOCK_WORDS * c + 2] ^= (unsigned char)(k >> 8);
+        state[AES_BLOCK_WORDS * c + 3] ^= (unsigned char)(k);
     }
 
     memcpy(out, state, 16);
@@ -298,6 +320,7 @@ static void aes_ttab_decrypt_block_impl(void* vctx,
     const unsigned char in[16],
     unsigned char out[16])
 {
+    // CTR 등에서는 decrypt = encrypt. 필요 시 Td* 기반 역방향 최적화로 교체 가능.
     aes_ttab_encrypt_block_impl(vctx, in, out);
 }
 
@@ -315,5 +338,3 @@ const blockcipher_vtable_t AES_TTABLE_ENGINE = {
     aes_ttab_decrypt_block_impl,
     aes_ttab_free_impl
 };
-
-

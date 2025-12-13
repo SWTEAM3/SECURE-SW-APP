@@ -1002,6 +1002,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         else if (errorCode == -105) {
             strcpy(err_msg, "출력 파일 생성 실패");
         }
+        else if (errorCode == -2) {
+            strcpy(err_msg, "입력 파일을 열 수 없습니다 (파일이 존재하지 않거나 접근할 수 없습니다)");
+        }
         else if (errorCode == -106) {
             strcpy(err_msg, "입력 파일을 열 수 없습니다");
         }
@@ -1032,6 +1035,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         }
         else if (errorCode == -115) {
             strcpy(err_msg, "출력 파일 생성 확인 실패");
+        }
+        else if (errorCode == -116) {
+            strcpy(err_msg, "입력 파일과 출력 파일이 같을 수 없습니다.\n다른 출력 파일을 지정해주세요.");
+        }
+        else if (errorCode == -117) {
+            strcpy(err_msg, "임시 파일 경로가 입력/출력 파일과 충돌합니다.\n시스템 임시 디렉토리를 확인해주세요.");
         }
         else if (errorCode == -200) {
             strcpy(err_msg,

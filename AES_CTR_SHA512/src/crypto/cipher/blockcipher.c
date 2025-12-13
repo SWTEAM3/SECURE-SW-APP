@@ -3,14 +3,16 @@
 
 #include <stdlib.h>
 
+#define BLOCKCIPHER_MIN_KEY_LEN 1
+
 // blockcipher_init:
-// - 엔진의 init 함수(vtable->init)를 호출
-// - 실패하면 NULL 반환
+// - 엔진 vtable을 받아 AES 등 구체 구현을 초기화하고 공통 래퍼 객체를 만든다.
+// - vtable->init 에게 키/키길이만 위임하며, 실패 시 전체 생성도 실패.
 blockcipher_t* blockcipher_init(const blockcipher_vtable_t* engine,
     const unsigned char* key,
     int key_len)
 {
-    if (!engine || !engine->init || !key || key_len <= 0)
+    if (!engine || !engine->init || !key || key_len < BLOCKCIPHER_MIN_KEY_LEN)
         return NULL;
 
     blockcipher_t* bc = (blockcipher_t*)malloc(sizeof(blockcipher_t));
@@ -28,8 +30,7 @@ blockcipher_t* blockcipher_init(const blockcipher_vtable_t* engine,
 }
 
 // blockcipher_free:
-// - 내부 ctx free
-// - 구조체 free
+// - 엔진별 free를 먼저 호출한 뒤 래퍼를 해제한다.
 void blockcipher_free(blockcipher_t* bc)
 {
     if (!bc) return;

@@ -18,6 +18,11 @@
 
 #include "worker.h"
 
+// worker 스레드:
+//  - GUI에서 선택한 암/복호화/해시 작업을 백그라운드에서 수행
+//  - 진행률/완료/에러를 메인 윈도우에 PostMessage로 알림
+//  - 모니터 스레드가 출력 파일 크기 또는 경과 시간 기반으로 진행률을 추적
+
 // 이 파일이 g_workerRunning의 실제 정의를 가짐
 volatile int g_workerRunning = 0;
 
@@ -32,7 +37,7 @@ static volatile DWORD g_lastMemCheck = 0;    // 마지막 메모리 체크 시�
 // 진행률 모니터 스레드 데이터
 typedef struct {
     HWND hwnd;
-    const char* outputFile;
+    char outputFile[MAX_PATH + 20];  // 경로를 복사해서 저장
     long long totalSize;
     volatile int* running;
     int isHashMode;  // SHA-512 해시 모드인지 여부
@@ -59,6 +64,7 @@ static DWORD WINAPI MonitorThreadProc(LPVOID lpParam) {
     g_lastMemCheck = GetTickCount();
 
     while (*mdata->running) {
+        // 1) 주기적으로 메모리 사용량 샘플링 (평균값 산출용)
         // 500ms마다 메모리 샘플링
         DWORD now = GetTickCount();
         if (now - g_lastMemCheck >= 500) {
@@ -71,7 +77,7 @@ static DWORD WINAPI MonitorThreadProc(LPVOID lpParam) {
         }
         
         if (mdata->isHashMode) {
-            // SHA-512 해시 모드: 시간 기반 추정 (현재는 사용 안 함)
+            // 2) 해시 모드: 파일 크기/시간으로만 대략 진행률 추정 (실제 사용은 거의 없음)
             DWORD elapsed = GetTickCount() - startTime;
             long long estimatedTimeMs =
                 (mdata->totalSize / (100 * 1024 * 1024)) * 1000;  // 100MB/s 가정
@@ -88,16 +94,25 @@ static DWORD WINAPI MonitorThreadProc(LPVOID lpParam) {
             }
         }
         else {
-            // 일반 모드: 출력 파일 크기를 기반으로 진행률 계산
-            long long currentSize = GetFileSizeBytes(mdata->outputFile);
-            if (mdata->totalSize > 0) {
-                int percent = 0;
-                if (currentSize > 0) {
-                    percent = (int)((currentSize * 100) / mdata->totalSize);
-                    if (percent > 100) percent = 100;
+            // 3) 암/복호화 모드: 현재까지 생성된 출력 파일 크기로 진행률 계산
+            // 파일이 존재하는지 먼저 확인 (삭제된 파일을 참조하지 않도록)
+            FILE* f_check = fopen(mdata->outputFile, "rb");
+            if (f_check) {
+                fclose(f_check);
+                long long currentSize = GetFileSizeBytes(mdata->outputFile);
+                if (mdata->totalSize > 0) {
+                    int percent = 0;
+                    if (currentSize > 0) {
+                        percent = (int)((currentSize * 100) / mdata->totalSize);
+                        if (percent > 100) percent = 100;
+                    }
+                    if (percent > lastPercent) {
+                        PostMessageA(mdata->hwnd, WM_WORKER_PROGRESS, percent, 0);
+                        lastPercent = percent;
+                    }
                 }
-                PostMessageA(mdata->hwnd, WM_WORKER_PROGRESS, percent, 0);
             }
+            // 파일이 없으면 진행률을 업데이트하지 않음 (이미 삭제되었거나 아직 생성되지 않음)
         }
         Sleep(100);  // 100ms마다 확인
     }
@@ -115,6 +130,10 @@ static DWORD WINAPI MonitorThreadProc(LPVOID lpParam) {
 DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
     worker_data_t* data = (worker_data_t*)lpParam;
     if (!data) return 1;
+
+    // data 구조:
+    //  - 입력/출력 파일 경로, AES 키/길이, HMAC 키, 엔진/모드 선택, 암/복호화 플래그, GUI 핸들
+    //  - methodIndex: 0=AES-CTR, 1=AES-CTR+HMAC, 2=SHA-512 해시
 
     // 시간 및 메모리 측정용 변수
     ULONGLONG start_ms = GetTickCount64();
@@ -141,6 +160,8 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
 
     /* ===============================================================
      * 1) AES-CTR + HMAC-SHA512 (iv || ct || hmac)
+     *  - 암호화: (랜덤 IV) → CTR 암호화 → HMAC 계산 → IV||CT||HMAC 저장
+     *  - 복호화: IV/HMAC 분리 → HMAC 검증 → CTR 복호화
      * =============================================================*/
     if (useAesCtr && useHmac) {
         if (data->isEncrypt) {
@@ -165,7 +186,8 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
                     (monitor_data_t*)malloc(sizeof(monitor_data_t));
                 if (monitorData) {
                     monitorData->hwnd = data->hwnd;
-                    monitorData->outputFile = tempFile;
+                    strncpy(monitorData->outputFile, tempFile, MAX_PATH + 19);  // 경로 복사
+                    monitorData->outputFile[MAX_PATH + 19] = '\0';
                     monitorData->totalSize = totalSize;
                     monitorData->running = &g_workerRunning;
                     monitorData->isHashMode = 0;
@@ -343,7 +365,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
                 return 1;
             }
 
-            // 2. 파일 크기 확인
+            // 2. 파일 크기 확인 (최소 IV+HMAC 길이 체크)
             _fseeki64(f_in, 0, SEEK_END);
             long long fileSize = _ftelli64(f_in);
             if (fileSize < 16 + 64) {
@@ -478,7 +500,8 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
                     (monitor_data_t*)malloc(sizeof(monitor_data_t));
                 if (monitorData) {
                     monitorData->hwnd = data->hwnd;
-                    monitorData->outputFile = data->outputFile;
+                    strncpy(monitorData->outputFile, data->outputFile, MAX_PATH + 19);  // 경로 복사
+                    monitorData->outputFile[MAX_PATH + 19] = '\0';
                     monitorData->totalSize = tempSize;
                     monitorData->running = &g_workerRunning;
                     monitorData->isHashMode = 0;
@@ -487,6 +510,9 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
                         CreateThread(NULL, 0, MonitorThreadProc, monitorData, 0, NULL);
                     if (hMonitorThread) {
                         CloseHandle(hMonitorThread); // detach
+                    }
+                    else {
+                        free(monitorData);
                     }
                 }
             }
@@ -512,29 +538,13 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
      * 2) AES-CTR (HMAC 없음)
      * =============================================================*/
     else if (useAesCtr) {
-        // 출력 파일이 이미 존재하면 삭제 (진행률 계산을 위해)
-        FILE* f = fopen(data->outputFile, "rb");
-        if (f) {
-            fclose(f);
-            remove(data->outputFile);
-        }
-
-        // 진행률 모니터 스레드 시작
-        if (totalSize > 0) {
-            monitor_data_t* monitorData =
-                (monitor_data_t*)malloc(sizeof(monitor_data_t));
-            if (monitorData) {
-                monitorData->hwnd = data->hwnd;
-                monitorData->outputFile = data->outputFile;
-                monitorData->totalSize = totalSize;
-                monitorData->running = &g_workerRunning;
-                monitorData->isHashMode = 0;
-
-                HANDLE hMonitorThread =
-                    CreateThread(NULL, 0, MonitorThreadProc, monitorData, 0, NULL);
-                if (hMonitorThread) {
-                    CloseHandle(hMonitorThread); // detach
-                }
+        // 암호화 시에만 출력 파일이 이미 존재하면 삭제 (진행률 계산을 위해)
+        // 복호화 시에는 출력 파일을 삭제하지 않음 (안전을 위해)
+        if (data->isEncrypt) {
+            FILE* f = fopen(data->outputFile, "rb");
+            if (f) {
+                fclose(f);
+                remove(data->outputFile);
             }
         }
 
@@ -542,26 +552,317 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
             // IV 생성
             GenerateRandomBytes(iv, 16);
 
+            // 임시 파일에 암호문 저장
+            // 시스템 임시 디렉토리에 고유한 임시 파일 생성 (입력/출력 파일과 절대 겹치지 않도록)
+            char tempFile[MAX_PATH + 20];
+            char tmpDir[MAX_PATH];
+            if (GetTempPathA(MAX_PATH, tmpDir) > 0) {
+                // 고유한 파일명 생성 (프로세스 ID + 타임스탬프 사용)
+                DWORD pid = GetCurrentProcessId();
+                DWORD tick = GetTickCount();
+                char* fileName = strrchr(data->inputFile, '\\');
+                if (!fileName) fileName = strrchr(data->inputFile, '/');
+                if (!fileName) fileName = (char*)data->inputFile;
+                else fileName++;
+                // 파일명에서 확장자 제거
+                char baseName[MAX_PATH];
+                strncpy(baseName, fileName, MAX_PATH - 1);
+                baseName[MAX_PATH - 1] = '\0';
+                char* ext = strrchr(baseName, '.');
+                if (ext) *ext = '\0';
+                snprintf(tempFile, MAX_PATH, "%s%s_%lu_%lu.encrypt.tmp", tmpDir, baseName, (unsigned long)pid, (unsigned long)tick);
+            }
+            else {
+                // GetTempPathA 실패 시 입력 파일과 다른 경로 사용
+                strncpy(tempFile, data->inputFile, MAX_PATH - 1);
+                tempFile[MAX_PATH - 1] = '\0';
+                char* ext = strrchr(tempFile, '.');
+                if (ext) *ext = '\0';
+                size_t tlen = strlen(tempFile);
+                if (tlen + 15 < MAX_PATH) {
+                    strcat(tempFile, ".encrypt.tmp");
+                }
+                else {
+                    // 최후의 수단: 현재 디렉토리에 생성
+                    strncpy(tempFile, "encrypt.tmp", MAX_PATH - 1);
+                    tempFile[MAX_PATH - 1] = '\0';
+                }
+            }
+
+            // 안전 체크: 임시 파일 경로가 입력 파일이나 출력 파일과 같으면 안 됨
+            if (strcmp(tempFile, data->inputFile) == 0 || 
+                strcmp(tempFile, data->outputFile) == 0) {
+                PostMessageA(data->hwnd, WM_WORKER_ERROR, -117, 0);
+                free(data);
+                return 1;
+            }
+
+            // 진행률 모니터 스레드 시작 (임시 파일 모니터링)
+            // 주의: 모니터 스레드는 임시 파일이 삭제되기 전까지만 실행됨
+            HANDLE hMonitorThread = NULL;
+            monitor_data_t* monitorData = NULL;
+            if (totalSize > 0) {
+                monitorData = (monitor_data_t*)malloc(sizeof(monitor_data_t));
+                if (monitorData) {
+                    monitorData->hwnd = data->hwnd;
+                    strncpy(monitorData->outputFile, tempFile, MAX_PATH + 19);  // 경로 복사
+                    monitorData->outputFile[MAX_PATH + 19] = '\0';
+                    monitorData->totalSize = totalSize;
+                    monitorData->running = &g_workerRunning;
+                    monitorData->isHashMode = 0;
+
+                    hMonitorThread = CreateThread(NULL, 0, MonitorThreadProc, monitorData, 0, NULL);
+                    if (hMonitorThread) {
+                        CloseHandle(hMonitorThread); // detach
+                    }
+                    else {
+                        free(monitorData);
+                        monitorData = NULL;
+                    }
+                }
+            }
+
             rc = stream_encrypt_ctr_file(engine,
                 data->inputFile,
-                data->outputFile,
+                tempFile,
                 data->aes_key,
                 data->aesKeyLen,
                 iv);
             if (rc != 0) {
+                remove(tempFile);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, rc, 0);
                 free(data);
                 return 1;
             }
+
+            // 암호화 완료, 최종 파일 작성 시작 (90%)
+            PostMessageA(data->hwnd, WM_WORKER_PROGRESS, 90, 0);
+
+            // 최종 파일: IV(16) + 암호문
+            FILE* f_out = fopen(data->outputFile, "wb");
+            if (!f_out) {
+                remove(tempFile);
+                PostMessageA(data->hwnd, WM_WORKER_ERROR, -105, 0);
+                free(data);
+                return 1;
+            }
+
+            // IV 쓰기
+            if (fwrite(iv, 1, 16, f_out) != 16) {
+                fclose(f_out);
+                remove(data->outputFile);
+                remove(tempFile);
+                PostMessageA(data->hwnd, WM_WORKER_ERROR, -111, 0);
+                free(data);
+                return 1;
+            }
+
+            // 암호문 복사
+            FILE* f_temp = fopen(tempFile, "rb");
+            if (!f_temp) {
+                fclose(f_out);
+                remove(data->outputFile);
+                remove(tempFile);
+                PostMessageA(data->hwnd, WM_WORKER_ERROR, -104, 0);
+                free(data);
+                return 1;
+            }
+
+            size_t buf_size = 1024 * 1024;
+            unsigned char* buf = (unsigned char*)malloc(buf_size);
+            if (!buf) {
+                fclose(f_temp);
+                fclose(f_out);
+                remove(data->outputFile);
+                remove(tempFile);
+                PostMessageA(data->hwnd, WM_WORKER_ERROR, -202, 0);
+                free(data);
+                return 1;
+            }
+
+            size_t n;
+            while ((n = fread(buf, 1, buf_size, f_temp)) > 0) {
+                if (fwrite(buf, 1, n, f_out) != n) {
+                    free(buf);
+                    fclose(f_temp);
+                    fclose(f_out);
+                    remove(data->outputFile);
+                    remove(tempFile);
+                    PostMessageA(data->hwnd, WM_WORKER_ERROR, -112, 0);
+                    free(data);
+                    return 1;
+                }
+            }
+            free(buf);
+            fclose(f_temp);
+            fflush(f_out);
+            if (fclose(f_out) != 0) {
+                remove(data->outputFile);
+                remove(tempFile);
+                PostMessageA(data->hwnd, WM_WORKER_ERROR, -114, 0);
+                free(data);
+                return 1;
+            }
+
+            // 모니터 스레드가 임시 파일을 참조할 수 있으므로
+            // 최종 파일로 모니터링을 전환하기 위해 잠시 대기
+            // (모니터 스레드는 파일이 없으면 자동으로 건너뜀)
+            Sleep(200);  // 모니터 스레드가 마지막 업데이트를 완료할 시간 제공
+            
+            // 임시 파일 삭제
+            remove(tempFile);
+
+            // 최종 파일 존재 확인
+            FILE* f_check = fopen(data->outputFile, "rb");
+            if (!f_check) {
+                PostMessageA(data->hwnd, WM_WORKER_ERROR, -115, 0);
+                free(data);
+                return 1;
+            }
+            fclose(f_check);
+
             strncpy(encryptedFile, data->outputFile, MAX_PATH);
         }
         else {
+            // 복호화: IV(16) || 암호문 형태
+            // 입력 파일과 출력 파일이 같으면 안전을 위해 오류 반환
+            if (strcmp(data->inputFile, data->outputFile) == 0) {
+                PostMessageA(data->hwnd, WM_WORKER_ERROR, -116, 0);
+                free(data);
+                return 1;
+            }
+            
+            FILE* f_in = fopen(data->inputFile, "rb");
+            if (!f_in) {
+                PostMessageA(data->hwnd, WM_WORKER_ERROR, -106, 0);
+                free(data);
+                return 1;
+            }
+
+            // 1. IV 읽기 (16 bytes)
+            if (fread(iv, 1, 16, f_in) != 16) {
+                fclose(f_in);
+                PostMessageA(data->hwnd, WM_WORKER_ERROR, -107, 0);
+                free(data);
+                return 1;
+            }
+
+            // 2. 암호문을 임시 파일로 추출
+            // 시스템 임시 디렉토리에 고유한 임시 파일 생성 (입력/출력 파일과 절대 겹치지 않도록)
+            char tempFile[MAX_PATH + 20];
+            char tmpDir[MAX_PATH];
+            if (GetTempPathA(MAX_PATH, tmpDir) > 0) {
+                // 고유한 파일명 생성 (프로세스 ID + 타임스탬프 사용)
+                DWORD pid = GetCurrentProcessId();
+                DWORD tick = GetTickCount();
+                char* fileName = strrchr(data->inputFile, '\\');
+                if (!fileName) fileName = strrchr(data->inputFile, '/');
+                if (!fileName) fileName = (char*)data->inputFile;
+                else fileName++;
+                // 파일명에서 확장자 제거
+                char baseName[MAX_PATH];
+                strncpy(baseName, fileName, MAX_PATH - 1);
+                baseName[MAX_PATH - 1] = '\0';
+                char* ext = strrchr(baseName, '.');
+                if (ext) *ext = '\0';
+                snprintf(tempFile, MAX_PATH, "%s%s_%lu_%lu.decrypt.tmp", tmpDir, baseName, (unsigned long)pid, (unsigned long)tick);
+            }
+            else {
+                // GetTempPathA 실패 시 입력 파일과 다른 경로 사용
+                strncpy(tempFile, data->inputFile, MAX_PATH - 1);
+                tempFile[MAX_PATH - 1] = '\0';
+                char* ext = strrchr(tempFile, '.');
+                if (ext) *ext = '\0';
+                size_t tlen = strlen(tempFile);
+                if (tlen + 15 < MAX_PATH) {
+                    strcat(tempFile, ".decrypt.tmp");
+                }
+                else {
+                    // 최후의 수단: 현재 디렉토리에 생성
+                    strncpy(tempFile, "decrypt.tmp", MAX_PATH - 1);
+                    tempFile[MAX_PATH - 1] = '\0';
+                }
+            }
+
+            // 안전 체크: 임시 파일 경로가 입력 파일이나 출력 파일과 같으면 안 됨
+            if (strcmp(tempFile, data->inputFile) == 0 || 
+                strcmp(tempFile, data->outputFile) == 0) {
+                fclose(f_in);
+                PostMessageA(data->hwnd, WM_WORKER_ERROR, -117, 0);
+                free(data);
+                return 1;
+            }
+
+            FILE* f_temp = fopen(tempFile, "wb");
+            if (!f_temp) {
+                fclose(f_in);
+                PostMessageA(data->hwnd, WM_WORKER_ERROR, -110, 0);
+                free(data);
+                return 1;
+            }
+
+            size_t buf_size = 1024 * 1024;                              //1MB
+            unsigned char* buf = (unsigned char*)malloc(buf_size);
+            if (!buf) {
+                fclose(f_in);
+                fclose(f_temp);
+                remove(tempFile);
+                PostMessageA(data->hwnd, WM_WORKER_ERROR, -202, 0);
+                free(data);
+                return 1;
+            }
+
+            size_t n;
+            while ((n = fread(buf, 1, buf_size, f_in)) > 0) {
+                if (fwrite(buf, 1, n, f_temp) != n) {
+                    free(buf);
+                    fclose(f_in);
+                    fclose(f_temp);
+                    remove(tempFile);
+                    PostMessageA(data->hwnd, WM_WORKER_ERROR, -112, 0);
+                    free(data);
+                    return 1;
+                }
+            }
+            free(buf);
+            fclose(f_in);
+            fclose(f_temp);
+
+            // 임시 파일 크기 확인 (진행률 계산용)
+            long long tempSize = GetFileSizeBytes(tempFile);
+            
+            // 진행률 모니터 스레드 시작 (복호화 출력 파일 기준)
+            if (tempSize > 0) {
+                monitor_data_t* monitorData =
+                    (monitor_data_t*)malloc(sizeof(monitor_data_t));
+                if (monitorData) {
+                    monitorData->hwnd = data->hwnd;
+                    strncpy(monitorData->outputFile, data->outputFile, MAX_PATH + 19);  // 경로 복사
+                    monitorData->outputFile[MAX_PATH + 19] = '\0';
+                    monitorData->totalSize = tempSize;
+                    monitorData->running = &g_workerRunning;
+                    monitorData->isHashMode = 0;
+
+                    HANDLE hMonitorThread =
+                        CreateThread(NULL, 0, MonitorThreadProc, monitorData, 0, NULL);
+                    if (hMonitorThread) {
+                        CloseHandle(hMonitorThread); // detach
+                    }
+                    else {
+                        free(monitorData);
+                    }
+                }
+            }
+
+            // 3. 임시 파일을 복호화
             rc = stream_decrypt_ctr_file(engine,
-                data->inputFile,
+                tempFile,
                 data->outputFile,
                 data->aes_key,
                 data->aesKeyLen,
                 iv);
+            remove(tempFile);
+
             if (rc != 0) {
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, rc, 0);
                 free(data);

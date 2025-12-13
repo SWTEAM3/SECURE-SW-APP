@@ -13,15 +13,26 @@
 #include <string.h>
 #include <stdint.h>
 
+#define AES_BLOCK_BYTES     16
+#define AES_WORD_BYTES      4
+#define AES_BLOCK_WORDS     (AES_BLOCK_BYTES / AES_WORD_BYTES) // 4
+#define AES128_KEY_BYTES    16
+#define AES192_KEY_BYTES    24
+#define AES256_KEY_BYTES    32
+#define AES_MAX_NK          8   // 256비트 키 -> 8 words
+#define AES_MAX_NR          14  // Nk + 6
+#define AES_MAX_EXP_WORDS   (AES_BLOCK_WORDS * (AES_MAX_NR + 1)) // 4*(14+1)=60
+#define AES_RCON_LEN        10
+
 // ---------------------------------------------------------------
 // 내부 컨텍스트
 // ---------------------------------------------------------------
 typedef struct aes_ref_ctx_t {
-    int Nk;                 // key words (4/6/8)
-    int Nr;                 // rounds (10/12/14)
-    unsigned char key[32];  // 원본 키 (on-the-fly Key Schedule용)
-    unsigned char sbox[256];
-    unsigned char inv_sbox[256];
+    int Nk;                      // 키 길이를 32bit word 단위로 표현 (4/6/8)
+    int Nr;                      // 라운드 수 (Nk + 6) -> 10/12/14
+    unsigned char key[32];       // 원본 키 (round key를 매 라운드 계산할 때 사용)
+    unsigned char sbox[256];     // SubBytes 테이블
+    unsigned char inv_sbox[256]; // InvSubBytes 테이블
 } aes_ref_ctx_t;
 
 // =======================================================
@@ -31,7 +42,7 @@ typedef struct aes_ref_ctx_t {
 // =======================================================
 
 // Rcon 테이블
-static const uint32_t RCON[10] = {
+static const uint32_t RCON[AES_RCON_LEN] = {
     0x01000000U, 0x02000000U, 0x04000000U, 0x08000000U,
     0x10000000U, 0x20000000U, 0x40000000U, 0x80000000U,
     0x1B000000U, 0x36000000U
@@ -50,36 +61,35 @@ static uint32_t sub_word(uint32_t x, const unsigned char sbox[256]) {
 
 // ---------------------------------------------------------------
 // 특정 라운드 r 의 4워드 라운드 키를 on-the-fly 로 계산
-//  - round: 0..Nr
-//  - round_key[0..3] 에 해당 라운드 키를 채움
-//  - 전체 확장키를 저장하지 않으므로 메모리 사용량 최소화
+//  - 표준 AES Key Schedule을 그대로 따르되, 필요한 구간만 즉석 계산
+//  - round: 0..Nr, round_key[0..3] 에 해당 라운드 키를 채움
+//  - 전체 확장키를 들고 있지 않아 메모리 사용량을 줄임 (대신 라운드마다 계산)
 // ---------------------------------------------------------------
-static void compute_round_key(uint32_t round_key[4],
+static void compute_round_key(uint32_t round_key[AES_BLOCK_WORDS],
     int round,
     const unsigned char* key,
     int Nk,
     int Nr,
     const unsigned char sbox[256]) {
-    uint32_t w[60];          // AES-256 기준 최대 60워드
-    int Nb = 4;
-    int total_words = Nb * (Nr + 1);
+    uint32_t w[AES_MAX_EXP_WORDS];   // 확장키 임시 버퍼 (AES-256 기준 최대 60워드)
+    int total_words = AES_BLOCK_WORDS * (Nr + 1); // 전체 확장키 워드 수
 
-    // 1) W[0..Nk-1] 에 원본 키를 채움
+    // 1) W[0..Nk-1] 에 원본 키를 채움 (big-endian 워드 구성)
     for (int i = 0; i < Nk; i++) {
-        w[i] = ((uint32_t)key[4 * i + 0] << 24) |
-            ((uint32_t)key[4 * i + 1] << 16) |
-            ((uint32_t)key[4 * i + 2] << 8) |
-            ((uint32_t)key[4 * i + 3]);
+        w[i] = ((uint32_t)key[AES_WORD_BYTES * i + 0] << 24) |
+            ((uint32_t)key[AES_WORD_BYTES * i + 1] << 16) |
+            ((uint32_t)key[AES_WORD_BYTES * i + 2] << 8) |
+            ((uint32_t)key[AES_WORD_BYTES * i + 3]);
     }
 
     // 2) 라운드 r 에 필요한 W[4*r .. 4*r+3] 까지 계산
-    int target_start = 4 * round;
-    int target_end = 4 * round + 4;
+    int target_start = AES_BLOCK_WORDS * round;
+    int target_end = target_start + AES_BLOCK_WORDS;
 
     if (target_start >= total_words) {
         // 범위 벗어나는 경우: 마지막 라운드 기준으로 조정
-        target_start = 4 * Nr;
-        target_end = target_start + 4;
+        target_start = AES_BLOCK_WORDS * Nr;
+        target_end = target_start + AES_BLOCK_WORDS;
     }
 
     for (int i = Nk; i < target_end && i < total_words; i++) {
@@ -139,12 +149,12 @@ static inline unsigned char mul14(unsigned char x) {
 static void add_round_key(unsigned char state[16],
     const uint32_t* rk_words) {
     // rk_words: 4워드 = 16바이트 (big-endian 레이아웃)
-    for (int c = 0; c < 4; c++) {
+    for (int c = 0; c < AES_BLOCK_WORDS; c++) {
         uint32_t w = rk_words[c];
-        state[4 * c + 0] ^= (unsigned char)(w >> 24);
-        state[4 * c + 1] ^= (unsigned char)(w >> 16);
-        state[4 * c + 2] ^= (unsigned char)(w >> 8);
-        state[4 * c + 3] ^= (unsigned char)(w);
+        state[AES_BLOCK_WORDS * c + 0] ^= (unsigned char)(w >> 24);
+        state[AES_BLOCK_WORDS * c + 1] ^= (unsigned char)(w >> 16);
+        state[AES_BLOCK_WORDS * c + 2] ^= (unsigned char)(w >> 8);
+        state[AES_BLOCK_WORDS * c + 3] ^= (unsigned char)(w);
     }
 }
 
@@ -178,53 +188,56 @@ static void inv_shift_rows(unsigned char s[16]) {
 }
 
 static void mix_columns(unsigned char s[16]) {
-    for (int c = 0; c < 4; c++) {
-        unsigned char a0 = s[4 * c + 0];
-        unsigned char a1 = s[4 * c + 1];
-        unsigned char a2 = s[4 * c + 2];
-        unsigned char a3 = s[4 * c + 3];
+    for (int c = 0; c < AES_BLOCK_WORDS; c++) {
+        unsigned char a0 = s[AES_BLOCK_WORDS * c + 0];
+        unsigned char a1 = s[AES_BLOCK_WORDS * c + 1];
+        unsigned char a2 = s[AES_BLOCK_WORDS * c + 2];
+        unsigned char a3 = s[AES_BLOCK_WORDS * c + 3];
 
-        s[4 * c + 0] = (unsigned char)(mul2(a0) ^ mul3(a1) ^ a2 ^ a3);
-        s[4 * c + 1] = (unsigned char)(a0 ^ mul2(a1) ^ mul3(a2) ^ a3);
-        s[4 * c + 2] = (unsigned char)(a0 ^ a1 ^ mul2(a2) ^ mul3(a3));
-        s[4 * c + 3] = (unsigned char)(mul3(a0) ^ a1 ^ a2 ^ mul2(a3));
+        s[AES_BLOCK_WORDS * c + 0] = (unsigned char)(mul2(a0) ^ mul3(a1) ^ a2 ^ a3);
+        s[AES_BLOCK_WORDS * c + 1] = (unsigned char)(a0 ^ mul2(a1) ^ mul3(a2) ^ a3);
+        s[AES_BLOCK_WORDS * c + 2] = (unsigned char)(a0 ^ a1 ^ mul2(a2) ^ mul3(a3));
+        s[AES_BLOCK_WORDS * c + 3] = (unsigned char)(mul3(a0) ^ a1 ^ a2 ^ mul2(a3));
     }
 }
 
 static void inv_mix_columns(unsigned char s[16]) {
-    for (int c = 0; c < 4; c++) {
-        unsigned char a0 = s[4 * c + 0];
-        unsigned char a1 = s[4 * c + 1];
-        unsigned char a2 = s[4 * c + 2];
-        unsigned char a3 = s[4 * c + 3];
+    for (int c = 0; c < AES_BLOCK_WORDS; c++) {
+        unsigned char a0 = s[AES_BLOCK_WORDS * c + 0];
+        unsigned char a1 = s[AES_BLOCK_WORDS * c + 1];
+        unsigned char a2 = s[AES_BLOCK_WORDS * c + 2];
+        unsigned char a3 = s[AES_BLOCK_WORDS * c + 3];
 
-        s[4 * c + 0] = (unsigned char)(mul14(a0) ^ mul11(a1) ^ mul13(a2) ^ mul9(a3));
-        s[4 * c + 1] = (unsigned char)(mul9(a0) ^ mul14(a1) ^ mul11(a2) ^ mul13(a3));
-        s[4 * c + 2] = (unsigned char)(mul13(a0) ^ mul9(a1) ^ mul14(a2) ^ mul11(a3));
-        s[4 * c + 3] = (unsigned char)(mul11(a0) ^ mul13(a1) ^ mul9(a2) ^ mul14(a3));
+        s[AES_BLOCK_WORDS * c + 0] = (unsigned char)(mul14(a0) ^ mul11(a1) ^ mul13(a2) ^ mul9(a3));
+        s[AES_BLOCK_WORDS * c + 1] = (unsigned char)(mul9(a0) ^ mul14(a1) ^ mul11(a2) ^ mul13(a3));
+        s[AES_BLOCK_WORDS * c + 2] = (unsigned char)(mul13(a0) ^ mul9(a1) ^ mul14(a2) ^ mul11(a3));
+        s[AES_BLOCK_WORDS * c + 3] = (unsigned char)(mul11(a0) ^ mul13(a1) ^ mul9(a2) ^ mul14(a3));
     }
 }
 
 // =======================================================
 // vtable에서 사용하는 reference AES 엔진 구현
+//  - init: 테이블 빌드 후 원본 키 저장 (확장키는 미리 계산하지 않음)
+//  - encrypt: 각 라운드마다 compute_round_key() 호출 → 메모리 대신 CPU 사용
+//  - decrypt: 역라운드 순서로 동일하게 on-the-fly 키를 뽑아 적용
 // =======================================================
 
 static void* aes_ref_init_impl(const unsigned char* key, int key_len) {
     if (!key) return NULL;
-    if (!(key_len == 16 || key_len == 24 || key_len == 32)) return NULL;
+    if (!(key_len == AES128_KEY_BYTES || key_len == AES192_KEY_BYTES || key_len == AES256_KEY_BYTES)) return NULL;
 
     aes_ref_ctx_t* ctx = (aes_ref_ctx_t*)calloc(1, sizeof(aes_ref_ctx_t));
     if (!ctx) return NULL;
 
-    ctx->Nk = key_len / 4;
+    ctx->Nk = key_len / AES_WORD_BYTES;
     ctx->Nr = ctx->Nk + 6;
 
     aes_sbox_build_tables(ctx->sbox, ctx->inv_sbox);
 
     // 원본 키 저장 (on-the-fly Key Schedule용)
     memcpy(ctx->key, key, key_len);
-    if (key_len < 32) {
-        memset(ctx->key + key_len, 0, 32 - key_len);
+    if (key_len < AES256_KEY_BYTES) {
+        memset(ctx->key + key_len, 0, AES256_KEY_BYTES - key_len);
     }
 
     return ctx;
@@ -233,13 +246,16 @@ static void* aes_ref_init_impl(const unsigned char* key, int key_len) {
 static void aes_ref_encrypt_block_impl(void* vctx,
     const unsigned char in[16],
     unsigned char out[16]) {
+    // AES 표준 라운드 순서를 그대로 따르며, state 는 column-major(4x4) 배열.
+    // 전체 확장키를 들고 있지 않고, compute_round_key()로 매 라운드 키를 생성해 적용.
+    // => 메모리를 아끼지만 반복 암호화 시 키스케줄 계산 비용이 매 라운드 발생.
     aes_ref_ctx_t* ctx = (aes_ref_ctx_t*)vctx;
     if (!ctx || !in || !out) return;
 
-    unsigned char state[16];
-    memcpy(state, in, 16);
+    unsigned char state[AES_BLOCK_BYTES];
+    memcpy(state, in, AES_BLOCK_BYTES);
 
-    uint32_t round_key[4];  // 현재 라운드의 확장키
+    uint32_t round_key[AES_BLOCK_WORDS];  // 현재 라운드의 확장키
 
     // round 0
     compute_round_key(round_key, 0, ctx->key, ctx->Nk, ctx->Nr, ctx->sbox);
@@ -269,13 +285,16 @@ static void aes_ref_encrypt_block_impl(void* vctx,
 static void aes_ref_decrypt_block_impl(void* vctx,
     const unsigned char in[16],
     unsigned char out[16]) {
+    // 암호화의 역순: (AddRoundKey -> InvMixColumns -> InvShiftRows -> InvSubBytes) 흐름.
+    // round key 역시 compute_round_key()로 매 라운드마다 생성해 적용한다.
+    // CTR 등 대칭모드에서는 decrypt가 거의 호출되지 않지만, CBC 같은 모드 확장 시 재사용 가능.
     aes_ref_ctx_t* ctx = (aes_ref_ctx_t*)vctx;
     if (!ctx || !in || !out) return;
 
-    unsigned char state[16];
-    memcpy(state, in, 16);
+    unsigned char state[AES_BLOCK_BYTES];
+    memcpy(state, in, AES_BLOCK_BYTES);
 
-    uint32_t round_key[4];
+    uint32_t round_key[AES_BLOCK_WORDS];
 
     // round Nr
     compute_round_key(round_key, ctx->Nr, ctx->key, ctx->Nk, ctx->Nr, ctx->sbox);

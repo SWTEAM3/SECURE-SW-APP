@@ -1,6 +1,18 @@
 ﻿#pragma once
 #include "gf256_math.h"
 
+#ifndef AES_SBOX_SIZE
+#define AES_SBOX_SIZE 256
+#endif
+
+#ifndef AES_AFFINE_CONST
+#define AES_AFFINE_CONST 0x63
+#endif
+
+#ifndef AES_INV_AFFINE_CONST
+#define AES_INV_AFFINE_CONST 0x05
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

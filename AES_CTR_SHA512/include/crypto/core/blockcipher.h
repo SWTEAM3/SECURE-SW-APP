@@ -4,6 +4,10 @@
 extern "C" {
 #endif
 
+#ifndef BLOCKCIPHER_MIN_KEY_LEN
+#define BLOCKCIPHER_MIN_KEY_LEN 1
+#endif
+
     // 블록 암호 엔진 공용 vtable 구조체
     typedef struct blockcipher_vtable_t {
         void* (*init)(const unsigned char* key, int key_len);

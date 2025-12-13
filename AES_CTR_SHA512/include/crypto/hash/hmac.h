@@ -56,23 +56,6 @@ extern "C" {
         IN const uint8_t* expected_tag,
         IN size_t tag_len);
 
-    /* test vectors */
-    /* test vector messages*/
-    extern const char* HMAC_msg1;
-    extern const char* HMAC_msg2;
-    extern const char* HMAC_msg3;
-    extern const char* HMAC_msg4;
-    /* test vector keys*/
-    extern const uint8_t HMAC_KEY1[128];
-    extern const uint8_t HMAC_KEY2[64];
-    extern const uint8_t HMAC_KEY3[200];
-    extern const uint8_t HMAC_KEY4[49];
-    /* test vector results*/
-    extern const uint8_t HMAC_RES1[64];
-    extern const uint8_t HMAC_RES2[64];
-    extern const uint8_t HMAC_RES3[64];
-    extern const uint8_t HMAC_RES4[32];
-
 #ifdef __cplusplus
 }
 #endif

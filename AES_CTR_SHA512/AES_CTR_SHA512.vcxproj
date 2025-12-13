@@ -122,17 +122,15 @@
       <AdditionalIncludeDirectories>$(ProjectDir)include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="app\app.c" />
-    <ClCompile Include="app\crypto_cli.c" />
     <ClCompile Include="app\perf_utils.c" />
     <ClCompile Include="app\ui_helpers.c" />
     <ClCompile Include="app\worker.c" />
-    <ClCompile Include="bench\bench_ctr_sha512.c" />
     <ClCompile Include="src\crypto\cipher\aes_engine_ref.c" />
     <ClCompile Include="src\crypto\cipher\aes_engine_ttable.c" />
     <ClCompile Include="src\crypto\cipher\aes_sbox_math.c" />
@@ -143,6 +141,7 @@
     <ClCompile Include="src\crypto\key\key_context.c" />
     <ClCompile Include="src\crypto\mode\mode_ctr.c" />
     <ClCompile Include="src\crypto\stream\stream_api.c" />
+    <ClCompile Include="tests\test_hmac.c" />
     <ClCompile Include="tests\test_mode_ctr.c" />
     <ClCompile Include="tests\test_sha512.c" />
   </ItemGroup>

@@ -179,11 +179,15 @@ void EnsureDefaultOutputFromInput(void)
 {
     extern char g_selectedFile[MAX_PATH];
     extern char g_outputFile[MAX_PATH];
+    extern int  g_isEncrypt; // 1: 암호화, 0: 복호화
 
     if (g_outputFile[0] != '\0' || g_selectedFile[0] == '\0')
         return;
 
-    // 기본은 "입력파일명.encrypted"
+    // 모드에 따라 확장자 결정: 암호화 → .encrypted, 복호화 → .decrypted
+    const char* suffix = g_isEncrypt ? ".encrypted" : ".decrypted";
+
+    // 기본은 "입력파일명.<suffix>"
     strncpy(g_outputFile, g_selectedFile, MAX_PATH - 1);
     g_outputFile[MAX_PATH - 1] = '\0';
 
@@ -193,8 +197,9 @@ void EnsureDefaultOutputFromInput(void)
     }
     // 버퍼 오버플로우 방지
     size_t len = strlen(g_outputFile);
-    if (len + 10 < MAX_PATH) {
-        strcat(g_outputFile, ".encrypted");
+    size_t suf_len = strlen(suffix);
+    if (len + suf_len < MAX_PATH) {
+        strcat(g_outputFile, suffix);
     }
 }
 
@@ -340,4 +345,3 @@ BOOL CALLBACK SetFontToChild(HWND hChild, LPARAM lParam)
     SendMessage(hChild, WM_SETFONT, (WPARAM)lParam, TRUE);
     return TRUE;
 }
-

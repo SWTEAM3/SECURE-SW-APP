@@ -7,10 +7,18 @@
 extern "C" {
 #endif
 
+#ifndef KC_MASTER_KEY_BYTES
+#define KC_MASTER_KEY_BYTES 32
+#endif
+
+#ifndef KC_MAX_ENC_KEY_BYTES
+#define KC_MAX_ENC_KEY_BYTES 32
+#endif
+
     // 최대 256비트 키까지 관리하는 간단한 키 컨텍스트
     typedef struct key_context_t {
-        unsigned char master_key[32];  // 256-bit
-        unsigned char enc_key[32];     // 파생된 키
+        unsigned char master_key[KC_MASTER_KEY_BYTES];  // 256-bit
+        unsigned char enc_key[KC_MAX_ENC_KEY_BYTES];    // 파생된 키
         unsigned int  enc_key_len;     // enc_key 길이(바이트)
     } key_context_t;
 

@@ -4,6 +4,18 @@
 extern "C" {
 #endif
 
+#ifndef GF256_FIELD_BITS
+#define GF256_FIELD_BITS 8
+#endif
+
+#ifndef GF256_MOD_POLY
+#define GF256_MOD_POLY 0x1B
+#endif
+
+#ifndef GF256_INV_EXP
+#define GF256_INV_EXP 254
+#endif
+
 	// GF(2^8) 유한체 연산 선언
 	// AES S-box 계산 및 MixColumns 등에서 사용됨
 

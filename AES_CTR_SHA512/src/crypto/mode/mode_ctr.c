@@ -3,21 +3,24 @@
 #include <stdlib.h>
 #include <string.h>
 
-// CTR 모드 카운터 (big-endian counter)
-// counter[15]가 LSB
-static void ctr_increment(unsigned char counter[16])
+#ifndef CTR_BLOCK_BYTES
+#define CTR_BLOCK_BYTES 16
+#endif
+
+// CTR 모드 카운터 (big-endian). counter[15]가 LSB이며 128비트 값을 1씩 증가시킨다.
+static void ctr_increment(unsigned char counter[CTR_BLOCK_BYTES])
 {
     for (int i = 15; i >= 0; i--) {
         counter[i]++;
-        if (counter[i] != 0) break; // carry 발생 시 중단
+        if (counter[i] != 0) break; // 자리올림이 없으면 종료
     }
 }
 
-// CTR 초기화
+// CTR 초기화: 블록암호를 생성하고 초기 카운터(IV)를 설정한다.
 ctr_mode_ctx_t* ctr_mode_init(const blockcipher_vtable_t* engine,
     const unsigned char* key,
     int key_len,
-    const unsigned char iv[16])
+    const unsigned char iv[CTR_BLOCK_BYTES])
 {
     if (!engine || !key || !iv) return NULL;
 
@@ -30,43 +33,41 @@ ctr_mode_ctx_t* ctr_mode_init(const blockcipher_vtable_t* engine,
         return NULL;
     }
 
-    memcpy(ctx->counter, iv, 16);
+    memcpy(ctx->counter, iv, CTR_BLOCK_BYTES);
     return ctx;
 }
 
-// CTR update (암/복호화 처리)
-// len은 바이트 단위, 처리 후 counter 증가
+// CTR update: keystream을 생성해 입력과 XOR하여 암/복호화한다.
+// in/out이 같은 버퍼여도 안전하며 len은 바이트 단위다.
 void ctr_mode_update(ctr_mode_ctx_t* ctx,
     const unsigned char* in,
     unsigned char* out,
     int len)
 {
     if (!ctx || !ctx->bc || !in || !out || len <= 0) return;
-    
-    // vtable과 함수 포인터 NULL 체크 추가
     if (!ctx->bc->vtable || !ctx->bc->vtable->encrypt_block || !ctx->bc->ctx) return;
 
-    unsigned char ks[16]; // keystream block
+    unsigned char ks[CTR_BLOCK_BYTES]; // keystream 블록
     int offset = 0;
 
     while (offset < len) {
-        // 1) counter를 AES로 암호화하여 keystream 생성
+        // 1) 카운터를 암호화해 keystream 생성
         ctx->bc->vtable->encrypt_block(ctx->bc->ctx, ctx->counter, ks);
 
-        // 2) keystream과 XOR
-        int chunk = (len - offset >= 16) ? 16 : (len - offset);
+        // 2) 입력과 XOR
+        int chunk = (len - offset >= CTR_BLOCK_BYTES) ? CTR_BLOCK_BYTES : (len - offset);
         for (int i = 0; i < chunk; i++) {
             out[offset + i] = in[offset + i] ^ ks[i];
         }
 
         offset += chunk;
 
-        // 3) counter 증가
+        // 3) 카운터 증가
         ctr_increment(ctx->counter);
     }
 }
 
-// 해제
+// CTR 컨텍스트를 정리하고 내용을 지운다.
 void ctr_mode_free(ctr_mode_ctx_t* ctx)
 {
     if (!ctx) return;

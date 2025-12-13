@@ -72,12 +72,6 @@
     <ClCompile Include="src\crypto\cipher\aes_engine_ref.c">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="app\crypto_cli.c">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="bench\bench_ctr_sha512.c">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="src\crypto\cipher\aes_engine_ttable.c">
       <Filter>소스 파일</Filter>
     </ClCompile>
@@ -121,6 +115,9 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="app\worker.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="tests\test_hmac.c">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
