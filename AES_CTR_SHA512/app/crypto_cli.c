@@ -9,6 +9,9 @@
 #include "crypto/mode/mode_ctr.h"
 #include "crypto/hash/hash_sha512.h"
 
+
+// 깃허브 공개 링크 "https://github.com/SWTEAM3/SECURE-SW-APP.git"
+
 // ===================== 공통 유틸 =====================
 
 static void trim_newline(char* s)
