@@ -40,6 +40,7 @@
 #define ID_RADIO_KEY128     1018
 #define ID_RADIO_KEY192     1019
 #define ID_RADIO_KEY256     1020
+#define HMAC_RANDOM_KEY_BYTES 128  // 1024비트 이상 랜덤 키 생성
 
 // 상태 저장용 전역 변수
 char g_selectedFile[MAX_PATH] = { 0 };     // 입력 파일 경로
@@ -631,7 +632,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             break;
         }
         case ID_BUTTON_HMAC_RAND: {
-            unsigned char hmac_key[32];
+            unsigned char hmac_key[HMAC_RANDOM_KEY_BYTES];
             GenerateRandomBytes(hmac_key, sizeof(hmac_key));
             if (g_hHmacKeyEdit) {
                 SetEditHexFromBytes(g_hHmacKeyEdit, hmac_key, sizeof(hmac_key));
@@ -676,15 +677,21 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             break;
         }
         case ID_BUTTON_RUN: {
+            unsigned char aes_key[32] = { 0 };
+            unsigned char* hmac_key = NULL;
+            size_t hmac_key_len = 0;
+            int aes_key_ready = 0;
+            int hmac_key_ready = 0;
+
             if (g_workerRunning) {
                 MessageBoxA(hwnd, "작업이 이미 실행 중입니다. 잠시 기다려주세요.",
                     "알림", MB_OK | MB_ICONINFORMATION);
-                break;
+                goto RUN_CLEANUP;
             }
             if (g_selectedFile[0] == '\0') {
                 MessageBoxA(hwnd, "파일을 먼저 선택하세요.",
                     "오류", MB_OK | MB_ICONWARNING);
-                break;
+                goto RUN_CLEANUP;
             }
 
             if (g_hMethodCombo) {
@@ -716,11 +723,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
             EnsureDefaultOutputFromInput();
             UpdatePathLabels();
-
-            unsigned char aes_key[32] = { 0 };
-            unsigned char hmac_key[32] = { 0 };
-            int aes_key_ready = 0;
-            int hmac_key_ready = 0;
 
             int useAesCtr = (g_methodIndex == 0 || g_methodIndex == 1);
             int useHmac = (g_methodIndex == 1);
@@ -769,7 +771,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                         MessageBoxA(hwnd,
                             "AES 키를 입력하거나 랜덤 생성을 선택해야 합니다.",
                             "오류", MB_OK | MB_ICONERROR);
-                        break;
+                        goto RUN_CLEANUP;
                     }
                 }
                 else {
@@ -779,32 +781,52 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             }
 
             if (useHmac) {
-                int r = GetKeyBytesFromEdit(g_hHmacKeyEdit,
-                    hmac_key,
-                    sizeof(hmac_key),
+                int r = GetKeyBytesDynamicFromEdit(g_hHmacKeyEdit,
+                    &hmac_key,
+                    &hmac_key_len,
                     "HMAC");
                 if (r <= 0) {
                     int ans = MessageBoxA(hwnd,
-                        "HMAC 키가 비어 있습니다.\n랜덤으로 256비트 키를 생성할까요?",
+                        "HMAC 키가 비어 있습니다.\n랜덤으로 1024비트 키를 생성할까요?",
                         "HMAC 키 없음",
                         MB_YESNO | MB_ICONQUESTION);
                     if (ans == IDYES) {
-                        GenerateRandomBytes(hmac_key, sizeof(hmac_key));
+                        hmac_key_len = HMAC_RANDOM_KEY_BYTES;
+                        hmac_key = (unsigned char*)malloc(hmac_key_len);
+                        if (!hmac_key) {
+                            MessageBoxA(hwnd,
+                                "HMAC 키를 위한 메모리를 할당할 수 없습니다.",
+                                "오류", MB_OK | MB_ICONERROR);
+                            break;
+                        }
+                        GenerateRandomBytes(hmac_key, hmac_key_len);
                         hmac_key_ready = 1;
                         if (g_hHmacKeyEdit) {
                             SetEditHexFromBytes(g_hHmacKeyEdit,
-                                hmac_key, sizeof(hmac_key));
+                                hmac_key, hmac_key_len);
                         }
                     }
                     else {
                         MessageBoxA(hwnd,
                             "HMAC 키를 입력하거나 랜덤 생성을 선택해야 합니다.",
                             "오류", MB_OK | MB_ICONERROR);
-                        break;
+                        goto RUN_CLEANUP;
                     }
                 }
                 else {
                     hmac_key_ready = 1;
+                }
+
+                if (hmac_key_ready && hmac_key_len > 0 && hmac_key_len < 128) {
+                    char warn[256];
+                    snprintf(warn, sizeof(warn),
+                        "HMAC 키 길이가 %zu비트(%zu바이트)입니다.\n1024비트 이상을 권장합니다.\n계속 진행할까요?",
+                        hmac_key_len * 8, hmac_key_len);
+                    int cont = MessageBoxA(hwnd, warn, "HMAC 키 길이 경고",
+                        MB_YESNO | MB_ICONWARNING);
+                    if (cont != IDYES) {
+                        goto RUN_CLEANUP;
+                    }
                 }
             }
 
@@ -830,7 +852,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 ((useAesCtr || useHmac) && strlen(g_outputFile) == 0)) {
                 MessageBoxA(hwnd, "파일 경로가 유효하지 않습니다.",
                     "오류", MB_OK | MB_ICONERROR);
-                break;
+                goto RUN_CLEANUP;
             }
 
             worker_data_t* data =
@@ -838,7 +860,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             if (!data) {
                 MessageBoxA(hwnd, "메모리 할당 실패",
                     "오류", MB_OK | MB_ICONERROR);
-                break;
+                goto RUN_CLEANUP;
             }
             memset(data, 0, sizeof(worker_data_t));
             data->methodIndex = g_methodIndex;
@@ -852,7 +874,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 memcpy(data->aes_key, aes_key, g_aesKeyLen);
             }
             if (useHmac && hmac_key_ready) {
-                memcpy(data->hmac_key, hmac_key, sizeof(hmac_key));
+                data->hmac_key = hmac_key;
+                data->hmacKeyLen = hmac_key_len;
             }
 
             if (g_hRunBtn) {
@@ -881,11 +904,24 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 free(data);
                 MessageBoxA(hwnd, "작업 스레드 생성 실패",
                     "오류", MB_OK | MB_ICONERROR);
-                break;
+                goto RUN_CLEANUP;
             }
 
+            if (useHmac && hmac_key_ready) {
+                // 워커 스레드가 HMAC 키를 소유하도록 로컬 포인터 해제
+                hmac_key = NULL;
+                hmac_key_len = 0;
+            }
+
+        RUN_CLEANUP:
             memset(aes_key, 0, sizeof(aes_key));
-            memset(hmac_key, 0, sizeof(hmac_key));
+            if (hmac_key) {
+                if (hmac_key_len > 0) {
+                    memset(hmac_key, 0, hmac_key_len);
+                }
+                free(hmac_key);
+                hmac_key = NULL;
+            }
             break;
         }
         default:

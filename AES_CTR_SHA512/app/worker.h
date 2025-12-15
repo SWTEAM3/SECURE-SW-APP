@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <windows.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,7 +20,8 @@ extern "C" {
         int aesKeyLen;       // AES 키 길이 (바이트): 16/24/32
 
         unsigned char aes_key[32];   // AES 키 (최대 256비트)
-        unsigned char hmac_key[32];  // HMAC 키 (256비트)
+        unsigned char* hmac_key;     // HMAC 키 (가변 길이, 힙 할당)
+        size_t hmacKeyLen;           // HMAC 키 길이 (바이트)
 
         char inputFile[MAX_PATH];    // 입력 파일 경로
         char outputFile[MAX_PATH];   // 출력 파일 경로

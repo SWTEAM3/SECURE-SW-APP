@@ -34,6 +34,23 @@ static volatile SIZE_T g_memSum = 0;      // 누적합
 static volatile DWORD g_memSampleCount = 0;  // 샘플 수
 static volatile DWORD g_lastMemCheck = 0;    // 마지막 메모리 체크 시각
 
+// worker_data_t 해제 (HMAC 키 메모리 포함)
+static void free_worker_data(worker_data_t* data)
+{
+    if (!data) return;
+
+    if (data->hmac_key) {
+        if (data->hmacKeyLen > 0) {
+            memset(data->hmac_key, 0, data->hmacKeyLen);
+        }
+        free(data->hmac_key);
+        data->hmac_key = NULL;
+        data->hmacKeyLen = 0;
+    }
+
+    free(data);
+}
+
 // 진행률 모니터 스레드 데이터
 typedef struct {
     HWND hwnd;
@@ -210,7 +227,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
             if (rc != 0) {
                 remove(tempFile);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, rc, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -221,12 +238,12 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
             if (!f_temp) {
                 remove(tempFile);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -104, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
             hmac_ctx hmac_ctx_obj;
-            hmac_init(&hmac_ctx_obj, data->hmac_key, 32);
+            hmac_init(&hmac_ctx_obj, data->hmac_key, data->hmacKeyLen);
 
             // IV 추가
             hmac_update(&hmac_ctx_obj, iv, 16);
@@ -238,7 +255,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
                 fclose(f_temp);
                 remove(tempFile);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -202, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -260,7 +277,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
             if (!f_out) {
                 remove(tempFile);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -105, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -270,7 +287,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
                 remove(data->outputFile);
                 remove(tempFile);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -111, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -281,7 +298,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
                 remove(data->outputFile);
                 remove(tempFile);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -104, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -292,7 +309,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
                 remove(data->outputFile);
                 remove(tempFile);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -202, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -304,7 +321,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
                     remove(data->outputFile);
                     remove(tempFile);
                     PostMessageA(data->hwnd, WM_WORKER_ERROR, -112, 0);
-                    free(data);
+                    free_worker_data(data);
                     return 1;
                 }
             }
@@ -317,7 +334,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
                 remove(data->outputFile);
                 remove(tempFile);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -113, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -327,7 +344,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
                 remove(data->outputFile);
                 remove(tempFile);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -114, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -338,7 +355,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
             FILE* f_check = fopen(data->outputFile, "rb");
             if (!f_check) {
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -115, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
             fclose(f_check);
@@ -353,7 +370,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
             FILE* f_in = fopen(data->inputFile, "rb");
             if (!f_in) {
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -106, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -361,7 +378,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
             if (fread(iv, 1, 16, f_in) != 16) {
                 fclose(f_in);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -107, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -371,7 +388,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
             if (fileSize < 16 + 64) {
                 fclose(f_in);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -108, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -383,14 +400,14 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
             if (fread(hmac_expected, 1, 64, f_in) != 64) {
                 fclose(f_in);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -109, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
             // 4. IV + 암호문에 대해 HMAC 검증
             _fseeki64(f_in, 0, SEEK_SET);
             hmac_ctx hmac_ctx_obj;
-            hmac_init(&hmac_ctx_obj, data->hmac_key, 32);
+            hmac_init(&hmac_ctx_obj, data->hmac_key, data->hmacKeyLen);
 
             hmac_update(&hmac_ctx_obj, iv, 16);
 
@@ -399,7 +416,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
             if (!buf) {
                 fclose(f_in);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -202, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -422,7 +439,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
             if (memcmp(hmac_expected, hmac_actual, 64) != 0) {
                 fclose(f_in);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -103, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -446,7 +463,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
                     PostMessageA(data->hwnd, WM_WORKER_COMPLETE, 0, 0);
                 }
 
-                free(data);
+                free_worker_data(data);
                 return 0;
             }
 
@@ -465,7 +482,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
             if (!f_temp) {
                 fclose(f_in);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -110, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -475,7 +492,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
                 fclose(f_temp);
                 remove(tempFile);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -202, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -527,7 +544,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
 
             if (rc != 0) {
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, rc, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -593,7 +610,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
             if (strcmp(tempFile, data->inputFile) == 0 || 
                 strcmp(tempFile, data->outputFile) == 0) {
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -117, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -631,7 +648,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
             if (rc != 0) {
                 remove(tempFile);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, rc, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -643,7 +660,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
             if (!f_out) {
                 remove(tempFile);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -105, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -653,7 +670,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
                 remove(data->outputFile);
                 remove(tempFile);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -111, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -664,7 +681,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
                 remove(data->outputFile);
                 remove(tempFile);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -104, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -676,7 +693,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
                 remove(data->outputFile);
                 remove(tempFile);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -202, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -689,7 +706,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
                     remove(data->outputFile);
                     remove(tempFile);
                     PostMessageA(data->hwnd, WM_WORKER_ERROR, -112, 0);
-                    free(data);
+                    free_worker_data(data);
                     return 1;
                 }
             }
@@ -700,7 +717,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
                 remove(data->outputFile);
                 remove(tempFile);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -114, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -716,7 +733,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
             FILE* f_check = fopen(data->outputFile, "rb");
             if (!f_check) {
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -115, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
             fclose(f_check);
@@ -728,14 +745,14 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
             // 입력 파일과 출력 파일이 같으면 안전을 위해 오류 반환
             if (strcmp(data->inputFile, data->outputFile) == 0) {
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -116, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
             
             FILE* f_in = fopen(data->inputFile, "rb");
             if (!f_in) {
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -106, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -743,7 +760,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
             if (fread(iv, 1, 16, f_in) != 16) {
                 fclose(f_in);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -107, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -789,7 +806,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
                 strcmp(tempFile, data->outputFile) == 0) {
                 fclose(f_in);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -117, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -797,7 +814,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
             if (!f_temp) {
                 fclose(f_in);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -110, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -808,7 +825,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
                 fclose(f_temp);
                 remove(tempFile);
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, -202, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
 
@@ -820,7 +837,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
                     fclose(f_temp);
                     remove(tempFile);
                     PostMessageA(data->hwnd, WM_WORKER_ERROR, -112, 0);
-                    free(data);
+                    free_worker_data(data);
                     return 1;
                 }
             }
@@ -865,7 +882,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
 
             if (rc != 0) {
                 PostMessageA(data->hwnd, WM_WORKER_ERROR, rc, 0);
-                free(data);
+                free_worker_data(data);
                 return 1;
             }
         }
@@ -882,7 +899,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
         unsigned char* file_buf = (unsigned char*)malloc(buf_size);
         if (!file_buf) {
             PostMessageA(data->hwnd, WM_WORKER_ERROR, -202, 0);
-            free(data);
+            free_worker_data(data);
             return 1;
         }
 
@@ -890,7 +907,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
         if (!fp) {
             free(file_buf);
             PostMessageA(data->hwnd, WM_WORKER_ERROR, -200, 0);
-            free(data);
+            free_worker_data(data);
             return 1;
         }
 
@@ -947,7 +964,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
                     free(file_buf);
                     fclose(fp);
                     PostMessageA(data->hwnd, WM_WORKER_ERROR, -201, 0);
-                    free(data);
+                    free_worker_data(data);
                     return 1;
                 }
                 if (read_bytes == 0) {
@@ -1011,7 +1028,7 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
             }
         }
 
-        free(data);
+        free_worker_data(data);
         return 0;
     }
 
@@ -1083,6 +1100,6 @@ DWORD WINAPI WorkerThreadProc(LPVOID lpParam) {
         }
     }
 
-    free(data);
+    free_worker_data(data);
     return 0;
 }

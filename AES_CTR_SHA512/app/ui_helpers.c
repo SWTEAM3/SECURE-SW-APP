@@ -9,6 +9,38 @@
 #include <ctype.h>
 #include <time.h>
 
+// EDIT 컨트롤에서 문자열을 읽어 앞뒤 공백을 제거한 새 버퍼 반환 (호출자 free 필요)
+static char* GetTrimmedTextFromEdit(HWND hEdit)
+{
+    if (!hEdit) return NULL;
+
+    int textLen = GetWindowTextLengthA(hEdit);
+    if (textLen <= 0) {
+        return NULL;
+    }
+
+    char* buf = (char*)malloc((size_t)textLen + 1);
+    if (!buf) return NULL;
+
+    if (GetWindowTextA(hEdit, buf, textLen + 1) <= 0) {
+        free(buf);
+        return NULL;
+    }
+
+    char* p = buf;
+    while (*p && isspace((unsigned char)*p)) p++;
+    char* end = buf + strlen(buf);
+    while (end > p && isspace((unsigned char)end[-1])) {
+        *--end = '\0';
+    }
+
+    if (p != buf) {
+        memmove(buf, p, (size_t)(end - p + 1));
+    }
+
+    return buf;
+}
+
 // 컨트롤 생성 헬퍼
 HWND CreateControl(HINSTANCE hInst, HWND hParent, const char* className, 
                    const char* text, DWORD style, int x, int y, int w, int h, HMENU id) {
@@ -244,14 +276,17 @@ void SetEditHexFromBytes(HWND hEdit, const unsigned char* buf, size_t len)
 {
     if (!hEdit || !buf || len == 0) return;
 
-    char tmp[256] = { 0 };
-    size_t maxBytes = (sizeof(tmp) - 1) / 2; // 2 chars per byte
-    if (len > maxBytes) len = maxBytes;
+    size_t hexLen = len * 2;
+    char* tmp = (char*)malloc(hexLen + 1);
+    if (!tmp) return;
 
     for (size_t i = 0; i < len; i++) {
         sprintf(tmp + (i * 2), "%02X", buf[i]);
     }
+    tmp[hexLen] = '\0';
+
     SetWindowTextA(hEdit, tmp);
+    free(tmp);
 }
 
 // 문자열이 HEX 문자열인지 확인 (0-9A-Fa-f, 길이는 짝수)
@@ -274,69 +309,124 @@ int GetKeyBytesFromEdit(HWND hEdit,
 {
     if (!hEdit || !out_key || out_key_len == 0) return 0;
 
-    char buf[256] = { 0 };
-    GetWindowTextA(hEdit, buf, (int)sizeof(buf));
-
-    // 앞뒤 공백 제거
-    char* p = buf;
-    while (*p && isspace((unsigned char)*p)) p++;
-    char* end = p + strlen(p);
-    while (end > p && isspace((unsigned char)end[-1])) {
-        *--end = '\0';
-    }
-
-    if (*p == '\0') {
-        // 비어 있음
+    char* trimmed = GetTrimmedTextFromEdit(hEdit);
+    if (!trimmed || trimmed[0] == '\0') {
+        free(trimmed);
         return 0;
     }
 
     memset(out_key, 0, out_key_len);
 
-    if (IsHexString(p)) {
-        size_t hexLen = strlen(p);
+    if (IsHexString(trimmed)) {
+        size_t hexLen = strlen(trimmed);
         size_t bytes = hexLen / 2;
+        size_t providedBits = bytes * 8;
+        size_t requiredBits = out_key_len * 8;
 
-        // HEX 문자열 길이 검증: 정확히 일치해야 함
         if (bytes != out_key_len) {
             char msg[256];
             snprintf(msg, sizeof(msg),
-                "%s 키의 길이가 올바르지 않습니다.\n입력된 키 길이: %zu 바이트\n필요한 키 길이: %zu 바이트\n\nHEX 문자열은 정확히 %zu 바이트(즉, %zu 자리)여야 합니다.",
-                fieldName ? fieldName : "입력", bytes, out_key_len, out_key_len, out_key_len * 2);
+                "%s 키의 길이가 올바르지 않습니다.\n입력된 키 길이: %zu비트\n필요한 키 길이: %zu비트\n\nHEX 문자열은 정확히 %zu비트(즉, %zu 자리)여야 합니다.",
+                fieldName ? fieldName : "입력", providedBits, requiredBits, requiredBits, out_key_len * 2);
             MessageBoxA(NULL, msg, "키 길이 오류", MB_OK | MB_ICONERROR);
+            free(trimmed);
             return -1;
         }
 
         for (size_t i = 0; i < bytes; i++) {
-            char h[3] = { p[i * 2], p[i * 2 + 1], '\0' };
+            char h[3] = { trimmed[i * 2], trimmed[i * 2 + 1], '\0' };
             unsigned int v = 0;
             if (sscanf(h, "%02X", &v) != 1) {
                 char msg[256];
                 snprintf(msg, sizeof(msg),
                     "%s 키의 HEX 파싱에 실패했습니다.", fieldName ? fieldName : "입력");
                 MessageBoxA(NULL, msg, "오류", MB_OK | MB_ICONERROR);
+                free(trimmed);
                 return -1;
             }
             out_key[i] = (unsigned char)v;
         }
+        free(trimmed);
         return 1;
     }
     else {
-        // 일반 문자열을 그대로 사용
-        size_t slen = strlen(p);
+        size_t slen = strlen(trimmed);
+        size_t providedBits = slen * 8;
+        size_t requiredBits = out_key_len * 8;
 
-        // 일반 문자열 길이 검증: 정확히 일치해야 함
         if (slen != out_key_len) {
             char msg[256];
             snprintf(msg, sizeof(msg),
-                "%s 키의 길이가 올바르지 않습니다.\n입력된 키 길이: %zu 바이트\n필요한 키 길이: %zu 바이트\n\n키는 정확히 %zu 바이트여야 합니다.",
-                fieldName ? fieldName : "입력", slen, out_key_len, out_key_len);
+                "%s 키의 길이가 올바르지 않습니다.\n입력된 키 길이: %zu비트\n필요한 키 길이: %zu비트\n\n키는 정확히 %zu비트여야 합니다.",
+                fieldName ? fieldName : "입력", providedBits, requiredBits, requiredBits);
             MessageBoxA(NULL, msg, "키 길이 오류", MB_OK | MB_ICONERROR);
+            free(trimmed);
             return -1;
         }
 
-        memcpy(out_key, p, slen);
+        memcpy(out_key, trimmed, slen);
+        free(trimmed);
         return 1;
     }
+}
+
+// EDIT에서 임의 길이 키를 읽어 힙 버퍼로 반환 (호출자가 free 필요)
+int GetKeyBytesDynamicFromEdit(HWND hEdit,
+    unsigned char** out_key,
+    size_t* out_key_len,
+    const char* fieldName)
+{
+    if (!hEdit || !out_key || !out_key_len) return 0;
+
+    *out_key = NULL;
+    *out_key_len = 0;
+
+    char* trimmed = GetTrimmedTextFromEdit(hEdit);
+    if (!trimmed || trimmed[0] == '\0') {
+        free(trimmed);
+        return 0;
+    }
+
+    int isHex = IsHexString(trimmed);
+    size_t keyLen = isHex ? strlen(trimmed) / 2 : strlen(trimmed);
+
+    if (keyLen == 0) {
+        free(trimmed);
+        return 0;
+    }
+
+    unsigned char* buf = (unsigned char*)malloc(keyLen);
+    if (!buf) {
+        MessageBoxA(NULL, "메모리 할당 실패 (키를 읽을 수 없습니다).",
+            "오류", MB_OK | MB_ICONERROR);
+        free(trimmed);
+        return -1;
+    }
+
+    if (isHex) {
+        for (size_t i = 0; i < keyLen; i++) {
+            char h[3] = { trimmed[i * 2], trimmed[i * 2 + 1], '\0' };
+            unsigned int v = 0;
+            if (sscanf(h, "%02X", &v) != 1) {
+                char msg[256];
+                snprintf(msg, sizeof(msg),
+                    "%s 키의 HEX 파싱에 실패했습니다.", fieldName ? fieldName : "입력");
+                MessageBoxA(NULL, msg, "오류", MB_OK | MB_ICONERROR);
+                free(buf);
+                free(trimmed);
+                return -1;
+            }
+            buf[i] = (unsigned char)v;
+        }
+    }
+    else {
+        memcpy(buf, trimmed, keyLen);
+    }
+
+    free(trimmed);
+    *out_key = buf;
+    *out_key_len = keyLen;
+    return 1;
 }
 
 // 자식 윈도우에 폰트 설정 (EnumChildWindows 콜백)

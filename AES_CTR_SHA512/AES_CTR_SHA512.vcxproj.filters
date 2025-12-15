@@ -120,6 +120,9 @@
     <ClCompile Include="tests\test_hmac.c">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="app\crypto_cli.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\crypto\cipher\aes_engine_ref.h">

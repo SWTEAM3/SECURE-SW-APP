@@ -2,6 +2,7 @@
 #define UI_HELPERS_H
 
 #include <windows.h>
+#include <stddef.h>
 
 // UI 레이아웃 상수
 #define UI_X_LEFT      20
@@ -49,7 +50,7 @@ void SetEditHexFromBytes(HWND hEdit, const unsigned char* buf, size_t len);
 // 문자열이 HEX 문자열인지 확인 (0-9A-Fa-f, 길이는 짝수)
 int IsHexString(const char* s);
 
-// EDIT에서 AES/HMAC 키 읽어서 바이트 배열로 변환
+// EDIT에서 AES/HMAC 키 읽어서 바이트 배열로 변환 (고정 길이)
 // - HEX(짝수 길이, 0-9A-Fa-f)면 HEX로 파싱
 // - 아니면 입력 문자열을 그대로 바이트로 사용 (길이 정확히 out_key_len이어야 함)
 // - 성공 시 1, 실패 시 0 또는 -1 리턴
@@ -58,8 +59,15 @@ int GetKeyBytesFromEdit(HWND hEdit,
     size_t out_key_len,
     const char* fieldName);
 
+// EDIT에서 임의 길이 키를 읽어 힙 버퍼로 반환 (호출자가 free 필요)
+// - HEX(짝수 길이, 0-9A-Fa-f)면 HEX로 파싱, 그 외에는 입력을 그대로 바이트로 사용
+// - 성공 시 1, 실패 시 0 또는 -1 리턴
+int GetKeyBytesDynamicFromEdit(HWND hEdit,
+    unsigned char** out_key,
+    size_t* out_key_len,
+    const char* fieldName);
+
 // 자식 윈도우에 폰트 설정 (EnumChildWindows 콜백)
 BOOL CALLBACK SetFontToChild(HWND hChild, LPARAM lParam);
 
 #endif
-
