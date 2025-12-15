@@ -30,16 +30,7 @@ AES 블록 암호를 CTR 모드로 구현하고, SHA-512 / HMAC-SHA512를 더한
 - **CLI/테스트 콘솔 타깃**:
   1) 콘솔 서브시스템 프로젝트를 별도로 만들고 필요한 파일만 포함(`tests/*.c`, `src/crypto/**`, `include/**` 등).
   2) 이 타깃에서는 `app/app.c`(WinMain 포함)를 **빌드에서 제외**해 링크 충돌을 막습니다. CLI를 쓰려면 `app/crypto_cli.c`의 `main` 주석을 해제합니다.
-  3) 테스트를 돌리려면 아래처럼 `main` 스텁을 두고 `test_*_main()`을 호출하세요.
-     ```c
-     int main(void) {
-         int rc = 0;
-         rc |= test_mode_ctr_main();
-         rc |= test_sha512_main();
-         rc |= test_hmac_main();
-         return rc;
-     }
-     ```
+  3) 테스트 실행 방법은 아래 “테스트 실행” 절을 참고하세요(콘솔 타깃에서 스텁 `main` 추가).
   4) GUI 타깃과 콘솔 타깃을 서로 다른 구성/프로젝트로 유지하면 엔트리 충돌을 피할 수 있습니다.
 
 ## 빌드 방법 (Windows)
